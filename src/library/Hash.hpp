@@ -19,10 +19,12 @@ public:
 
 	Hash();
 	Hash(Hash const& other);
+	Hash(const char *data);
 	~Hash();
 
 	Hash& operator=(Hash const& other);
 	Hash& operator=(std::string const& s);
+	bool operator==(Hash const& other);
 	unsigned char* data() const;
 };
 

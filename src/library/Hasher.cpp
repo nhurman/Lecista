@@ -17,6 +17,14 @@ void Hasher::update(std::string const& data)
 	update(data.c_str(), data.size());
 }
 
+
+void Hasher::update(Hash::SharedPtr const& hash)
+{
+	update(hash->data(), Hash::SIZE);
+}
+
+
+
 void Hasher::update(const void *data, unsigned long length)
 {
 	if (length > 0) {

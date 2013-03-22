@@ -19,6 +19,7 @@ public:
 	void reset();
 
 	void update(std::string const& data);
+	void update(Hash::SharedPtr const& hash);
 	void update(const void *data, unsigned long length);
 	Hash::SharedPtr getHash();
 
