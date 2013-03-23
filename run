@@ -1,0 +1,16 @@
+#!/bin/bash
+
+function runApp {
+	d=`ls -1 build/ | grep $1`
+	e=`ls build/$d | grep ^lecista[.]`
+	cd build
+	$2 $d/$e
+}
+
+if [ -z $1 ] || [ "$1" == "release" ]; then
+  runApp release exec
+elif [ "$1" = "debug" ]; then
+  runApp debug exec
+elif [ "$1" = "gdb" ]; then
+  runApp debug gdb
+fi

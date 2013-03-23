@@ -2,6 +2,9 @@
 
 #include <string>
 #include <deque>
+#include <leveldb/db.h>
+#include <boost/filesystem.hpp>
+#include "HashTree.hpp"
 
 namespace Lecista {
 
@@ -14,10 +17,9 @@ public:
 	};
 
 	DirectoryExplorer();
-	std::deque<std::string> getStructure(std::string path);
+	void hashDirectory(std::string path);
 
-protected:
-	//std::vector<
+private:
 };
 
 }

@@ -85,12 +85,15 @@ ifneq ($(GIT_REV),)
 endif
 endif
 
+BASE_CXXFLAGS = -Wall -fno-strict-aliasing -pipe
+DO_CXXFLAGS = -std=c++0x
+
 #############################################################################
 # SETUP AND BUILD -- LINUX
 #############################################################################
 
 ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
-	BASE_CXXFLAGS = -Wall -fno-strict-aliasing -pipe
+	BASE_CXXFLAGS += -pipe
 	CXX = clang++
 else # ifeq Linux
 
@@ -106,9 +109,7 @@ ifeq ($(call bin_path, $(CXX)),)
 	CXX=g++
 endif
 
-	BASE_CXXFLAGS = -Wall -fno-strict-aliasing
-
-SHLIBEXT=dll
+	SHLIBEXT=dll
 	SHLIBCXXFLAGS=
 	SHLIBLDFLAGS=-shared $(LDFLAGS)
 
@@ -122,6 +123,7 @@ else
 endif
 	CLIENT_LIBS += -lmingw32
 else # ifeq mingw32
+
 #############################################################################
 # SETUP AND BUILD -- GENERIC
 #############################################################################
@@ -151,14 +153,15 @@ endif
 
 define DO_CXX
 $(echo_cmd) "CXX $<"
-$(Q)$(CXX) $(CXXFLAGS) -o $@ -c $<
+$(Q)$(CXX) $(CXXFLAGS) $(DO_CXXFLAGS) -o $@ -c $<
 endef
 
 
 ## LIBS
 LIBS += -lboost_system \
 	-lboost_filesystem \
-	-lcrypto
+	-lcrypto \
+	-lleveldb
 
 #############################################################################
 # MAIN TARGETS
@@ -236,6 +239,7 @@ LOBJ = \
 	$(B)/library/DirectoryExplorer.o \
 	$(B)/library/Hash.o \
 	$(B)/library/Hasher.o \
+	$(B)/library/HashDatabase.o \
 	$(B)/library/HashTree.o \
 	$(B)/library/main.o
 

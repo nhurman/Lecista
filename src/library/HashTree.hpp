@@ -1,11 +1,12 @@
 #pragma once
 
-#include <exception>
 #include <cmath>
 #include <string>
 #include <fstream>
 #include <vector>
 #include <deque>
+#include <boost/filesystem.hpp>
+
 #include "Hash.hpp"
 #include "Hasher.hpp"
 
@@ -14,27 +15,31 @@ namespace Lecista {
 class HashTree
 {
 public:
-	HashTree(std::string filename);
-	std::vector<Hash::SharedPtr> blockHashList(int index);
-	Hash::SharedPtr getRootHash();
-	std::deque<std::vector<Hash::SharedPtr> > getTree();
-	unsigned int getBlocksCount();
+	HashTree();
+	HashTree(std::string const& filename);
+	void hashFile(std::string const& filename);
 
-	static std::deque<std::vector<Hash::SharedPtr> > hashFile(std::string filename);
+	std::vector<Hash::SharedPtr> blockHashList(int index);
+	Hash::SharedPtr getRootHash() const;
+	std::deque<std::vector<Hash::SharedPtr>> getTree() const;
+
+	uintmax_t getFilesize() const { return m_filesize; }
+
+	unsigned long serialize(char*& out);
+	bool unserialize(char* data, unsigned long size);
+
 	static bool checkBlockHash(
 		int index,
 		Hash::SharedPtr hash,
 		Hash::SharedPtr rootHash,
-		std::vector<Hash::SharedPtr> hashList);
-
-	class FileNotFoundException : public std::exception {};
+		std::vector<Hash::SharedPtr> const& hashList);
 
 private:
 	static const int BLOCK_SIZE = 16 * 1000 * 1000; // 16 MB
 	
 	std::string m_filename;
-	std::deque<std::vector<Hash::SharedPtr> > m_tree;
-	unsigned int m_blocks;
+	uintmax_t m_filesize;
+	std::deque<std::vector<Hash::SharedPtr>> m_tree;
 	
 	void hashBase();
 	unsigned int hashLevel();
