@@ -17,37 +17,36 @@ HashTree::HashTree(string const& filename)
 
 void HashTree::hashFile(string const& filename)
 {
-	m_filename = filename;
-	hashBase();
+	hashBase(filename);
 	while (hashLevel() > 1);
 }
 
-void HashTree::hashBase()
+void HashTree::hashBase(string const& filename)
 {
 	m_tree.clear();
 
-	ifstream fh(m_filename.c_str(), ios::binary);
+	ifstream fh(filename.c_str(), ios::binary);
 	if (!fh.is_open()) {
-		throw boost::filesystem::filesystem_error("Could not open file", m_filename, boost::system::error_code());
+		throw boost::filesystem::filesystem_error("Could not open file", filename, boost::system::error_code());
 	}
 	
 	Hasher hasher;
 
-	m_filesize = boost::filesystem::file_size(m_filename);
+	m_filesize = boost::filesystem::file_size(filename);
 	unsigned int blocks = ceil(m_filesize / (float)BLOCK_SIZE);
 
 	vector<Hash::SharedPtr> hashList(blocks);
 	char buffer[1000 * 1000]; // 1 MB
-	unsigned long toRead, read;
+	unsigned int toRead, read;
 
 	fh.seekg(0, fh.beg);
-	for (int i = 0; i < blocks && !fh.eof(); ++i) {
+	for (unsigned int i = 0; i < blocks && !fh.eof(); ++i) {
 		toRead = BLOCK_SIZE;
 		read = 0;
 		hasher.reset();
 
 		while (toRead > 0 && !fh.eof()) {
-			fh.read(buffer, min(toRead, sizeof buffer));
+			fh.read(buffer, min(toRead, (unsigned int)sizeof buffer));
 			read = fh.gcount();
 			toRead -= read;
 			hasher.update(&buffer[0], read);
@@ -59,7 +58,6 @@ void HashTree::hashBase()
 	m_tree.push_front(hashList);
 }
 
-
 unsigned int HashTree::hashLevel()
 {
 	if (m_tree.back().size() < 2) {
@@ -68,11 +66,11 @@ unsigned int HashTree::hashLevel()
 
 	const vector<Hash::SharedPtr> &blocks = m_tree.back();
 
-	int size = ceil(blocks.size() / 2.);
+	unsigned int size = ceil(blocks.size() / 2.);
 	vector<Hash::SharedPtr> hashList(size);
 	Hasher hasher;
 
-	for (int i = 0; i < size; ++i) {
+	for (unsigned int i = 0; i < size; ++i) {
 		if (i*2+1 < blocks.size()) {
 			hasher.reset();
 			hasher.update(blocks[i*2]);
@@ -92,14 +90,14 @@ unsigned int HashTree::hashLevel()
 vector<Hash::SharedPtr> HashTree::blockHashList(int index)
 {
 	vector<Hash::SharedPtr> hashList(m_tree.size() - 1);
-	int parent = index, sibling;
+	unsigned int parent = index, sibling;
 
 	if (m_tree.size() < 2) {
 		// Nothing to do, file is contained in one block
 	}
 	else {
 		// Get hashes of sibling and parents' siblings
-		int index = 0;
+		unsigned int index = 0;
 		for (auto i = m_tree.begin(); i + 1 != m_tree.end(); ++i) {
 			sibling = parent + ((parent % 2 == 0) ? 1 : -1);
 
@@ -117,23 +115,17 @@ vector<Hash::SharedPtr> HashTree::blockHashList(int index)
 	return hashList;
 }
 
-Hash::SharedPtr HashTree::getRootHash() const
+Hash::SharedPtr HashTree::rootHash() const
 {
 	assert(m_tree.back().size() == 1);
 	return m_tree.back()[0];
 }
 
-deque<vector<Hash::SharedPtr>> HashTree::getTree() const
+unsigned int HashTree::getSerializedSize() const
 {
-	return m_tree;
-}
-
-unsigned long HashTree::serialize(char*& out)
-{
-	unsigned int i = 0,
-		s_filename = m_filename.length() + 1,
+	unsigned int
 		s_filesize = sizeof m_filesize,
-		s_hashList;
+		s_hashlist;
 
 	// How many hashes are contained in this tree ?
 	unsigned int lastLevel = ceil(m_filesize / (float)BLOCK_SIZE);
@@ -146,15 +138,19 @@ unsigned long HashTree::serialize(char*& out)
 		total += lastLevel;
 	}
 
-	s_hashList = total * Hash::SIZE;
+	s_hashlist = total * Hash::SIZE;
+	return s_filesize + s_hashlist;
+}
 
-	out = new char[s_filename + s_filesize + s_hashList];
+unsigned int HashTree::serialize(char*& out) const
+{
+	unsigned int i = 0;
+	if (out == 0) {
+		out = new char[getSerializedSize()];
+	}
 
-	memcpy(out + i, m_filename.c_str(), s_filename);
-	i += s_filename;
-
-	memcpy(out + i, &m_filesize, s_filesize);
-	i += s_filesize;
+	memcpy(out + i, &m_filesize, sizeof m_filesize);
+	i += sizeof m_filesize;
 
 	for (auto j = m_tree.begin(); j != m_tree.end(); ++j) {
 		for (auto k = j->begin(); k != j->end(); ++k) {
@@ -166,23 +162,11 @@ unsigned long HashTree::serialize(char*& out)
 	return i;
 }
 
-bool HashTree::unserialize(char* data, unsigned long size)
+bool HashTree::unserialize(char const* data, unsigned int size)
 {
-	unsigned long i_filesize, i_hashlist;
+	unsigned int i_hashlist  = sizeof m_filesize;
 
-	for (i_filesize = 0; i_filesize < size && data[i_filesize] != 0; ++i_filesize);
-
-	++i_filesize;
-	if (i_filesize >= size) {
-		return false;
-	}
-
-	m_filename = data;
-
-	i_hashlist = i_filesize + sizeof m_filesize;
-	memcpy(&m_filesize, data + i_filesize, sizeof m_filesize);
-
-	
+	memcpy(&m_filesize, data, sizeof m_filesize);
 	m_tree.clear();
 
 	for (unsigned int lastLevel = 2 * ceil(m_filesize / (float)BLOCK_SIZE); lastLevel != 1; ) {
@@ -190,7 +174,7 @@ bool HashTree::unserialize(char* data, unsigned long size)
 
 		vector<Hash::SharedPtr> level(lastLevel);
 
-		for (int i = 0; i < lastLevel; ++i) {
+		for (unsigned int i = 0; i < lastLevel; ++i) {
 			level[i] = Hash::SharedPtr(new Hash(data + i_hashlist));
 			i_hashlist += Hash::SIZE;
 		}
@@ -200,7 +184,6 @@ bool HashTree::unserialize(char* data, unsigned long size)
 
 	return true;
 }
-
 
 /* Static methods below */
 

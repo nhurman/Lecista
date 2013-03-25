@@ -85,7 +85,7 @@ ifneq ($(GIT_REV),)
 endif
 endif
 
-BASE_CXXFLAGS = -Wall -fno-strict-aliasing -pipe
+BASE_CXXFLAGS = -Wall -fno-strict-aliasing
 DO_CXXFLAGS = -std=c++0x
 
 #############################################################################
@@ -246,7 +246,6 @@ LOBJ = \
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(LOBJ)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(LOBJ) $(LIBS)
-
 
 #############################################################################
 ## LIBRARY RULES

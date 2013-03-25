@@ -19,7 +19,7 @@ void DirectoryExplorer::hashDirectory(std::string path)
 
 		std::cout << path;
 		HashTree tree(path);
-		std::cout << " " << std::hex << int(tree.getRootHash()->data()[0]) << std::endl;
+		std::cout << " " << std::hex << int(tree.rootHash()->data()[0]) << std::endl;
 
 		break;
 	}

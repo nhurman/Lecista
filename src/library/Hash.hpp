@@ -8,8 +8,7 @@ namespace Lecista {
 
 class Hash
 {
-	friend class Hasher;
-
+friend class Hasher;
 private:
 	unsigned char *m_hash;
 

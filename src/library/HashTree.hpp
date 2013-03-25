@@ -20,13 +20,13 @@ public:
 	void hashFile(std::string const& filename);
 
 	std::vector<Hash::SharedPtr> blockHashList(int index);
-	Hash::SharedPtr getRootHash() const;
-	std::deque<std::vector<Hash::SharedPtr>> getTree() const;
+	Hash::SharedPtr rootHash() const;
+	std::deque<std::vector<Hash::SharedPtr>> tree() const { return m_tree; };
+	uintmax_t filesize() const { return m_filesize; }
 
-	uintmax_t getFilesize() const { return m_filesize; }
-
-	unsigned long serialize(char*& out);
-	bool unserialize(char* data, unsigned long size);
+	unsigned int getSerializedSize() const;
+	unsigned int serialize(char*& out) const;
+	bool unserialize(char const* data, unsigned int size);
 
 	static bool checkBlockHash(
 		int index,
@@ -41,7 +41,7 @@ private:
 	uintmax_t m_filesize;
 	std::deque<std::vector<Hash::SharedPtr>> m_tree;
 	
-	void hashBase();
+	void hashBase(std::string const& filename);
 	unsigned int hashLevel();
 };
 

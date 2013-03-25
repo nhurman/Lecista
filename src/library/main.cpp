@@ -1,8 +1,6 @@
 #include <iostream>
 
-#include "DirectoryExplorer.hpp"
 #include "HashDatabase.hpp"
-#include "HashTree.hpp"
 
 using namespace Lecista;
 
@@ -15,6 +13,12 @@ int main()
 	//explorer.hashDirectory("../src/library/");
 
 	HashDatabase db;
+
+	//db.addFile("/home/nicolas/Desktop/Maths");
+	//db.addFile("/usr/lib/flashplugin-installer/libflashplayer.so");
+
+	std::cout << db.getFile("/home/nicolas/Desktop/Maths")->tree()->filesize() << std::endl;
+	std::cout << db.getFile("/usr/lib/flashplugin-installer/libflashplayer.so")->tree()->filesize() << std::endl;
 
 	return 0;
 }

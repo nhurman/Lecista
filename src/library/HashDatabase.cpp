@@ -8,8 +8,6 @@ HashDatabase::HashDatabase(std::string const& database)
 	options.create_if_missing = true;
 	leveldb::Status status = leveldb::DB::Open(options, database, &m_db);
 	assert(status.ok());
-
-	addFile("/usr/lib/flashplugin-installer/libflashplayer.so");
 }
 
 HashDatabase::~HashDatabase()
@@ -19,17 +17,66 @@ HashDatabase::~HashDatabase()
 
 void HashDatabase::addFile(std::string const& filename)
 {
-	/*HashTree tree(filename);
+	char *out = 0;
+	unsigned int size = serialize(filename, out);
 
-	char *d = 0;
-	int size = tree.serialize(d);
+	unserialize(out, size);
 
-	delete[] d;*/
+	leveldb::Slice value(out, size);
+	leveldb::Status s = m_db->Put(leveldb::WriteOptions(), filename, value);
+	assert(s.ok());
+
+	unserialize(out, size);
+
+	delete[] out;
 }
 
-void HashDatabase::write(File file)
+HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
 {
+	std::string data;
+	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), filename, &data);
+	assert(s.ok());
 
+	return unserialize(data.c_str(), data.length());
+}
+
+unsigned int HashDatabase::serialize(std::string const& filename, char*& out) const
+{
+	time_t lastWrite = boost::filesystem::last_write_time(filename);
+	HashTree tree(filename);
+
+	unsigned int s_filename = filename.length() + 1;
+	unsigned int s_lastWrite = sizeof lastWrite;
+	unsigned int s_tree = tree.getSerializedSize();
+	unsigned int size = s_filename + s_lastWrite + s_tree;
+	
+	out = new char[size];
+	std::memcpy(out, filename.c_str(), s_filename);
+	std::memcpy(out + s_filename, &lastWrite, s_lastWrite);
+
+	char *treeBeginning = out + s_filename + s_lastWrite;
+	tree.serialize(treeBeginning);
+
+	return size;
+}
+
+HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsigned int size)
+{
+	File::SharedPtr file(new File(new HashTree()));
+
+	unsigned int s_filename;
+	unsigned int s_lastWrite = sizeof(file->m_lastWrite);
+
+	for (s_filename = 0; s_filename < size && data[s_filename] != 0; ++s_filename);
+	assert(s_filename < size);
+
+	file->m_filename = data;
+	memcpy(&(file->m_lastWrite), data + s_filename + 1, s_lastWrite);
+
+	unsigned int s = s_filename + 1 + s_lastWrite;
+	file->m_tree->unserialize(data + s, size - s);
+
+	return file;
 }
 
 }

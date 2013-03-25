@@ -2,8 +2,7 @@
 
 #include <string>
 #include <sstream>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
+#include <boost/filesystem.hpp>
 #include <leveldb/db.h>
 #include "HashTree.hpp"
 
@@ -12,22 +11,36 @@ namespace Lecista {
 class HashDatabase
 {
 public:
-	struct File
+	class File
 	{
-		std::string filename;
-		uintmax_t filesize;
-		unsigned int last_write_time;
-		HashTree *tree;
+	friend class HashDatabase;
+	public:
+		typedef boost::shared_ptr<File> SharedPtr;
+
+		File(HashTree *t) : m_tree(t) {}
+		~File() { delete m_tree; }
+
+		std::string filename() { return m_filename; }
+		time_t lastWrite() { return m_lastWrite; }
+		HashTree const* tree() { return m_tree; }
+
+	private:
+		std::string m_filename;
+		time_t m_lastWrite;
+		HashTree *m_tree;
 	};
 
 	HashDatabase(std::string const& database = "hash_database");
 	~HashDatabase();
 
 	void addFile(std::string const& filename);
-	void write(File file);
+	File::SharedPtr getFile(std::string const& filename);
 
 private:
 	leveldb::DB *m_db;
+
+	unsigned int serialize(std::string const& filename, char*& out) const;
+	File::SharedPtr unserialize(char const* data, unsigned int size);
 };
 
 }
