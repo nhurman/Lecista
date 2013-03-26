@@ -2,9 +2,10 @@
 
 #include <string>
 #include <deque>
+#include <algorithm>
 #include <leveldb/db.h>
 #include <boost/filesystem.hpp>
-#include "HashTree.hpp"
+#include "HashDatabase.hpp"
 
 namespace Lecista {
 
@@ -16,10 +17,13 @@ public:
 		std::string name;
 	};
 
-	DirectoryExplorer();
-	void hashDirectory(std::string path);
+	DirectoryExplorer(HashDatabase& db);
+	void addDirectory(std::string path);
+	std::deque<std::string> listDirectories();
 
 private:
+	HashDatabase& m_db;
+	unsigned int m_hashCount;
 };
 
 }

@@ -20,13 +20,9 @@ void HashDatabase::addFile(std::string const& filename)
 	char *out = 0;
 	unsigned int size = serialize(filename, out);
 
-	unserialize(out, size);
-
 	leveldb::Slice value(out, size);
 	leveldb::Status s = m_db->Put(leveldb::WriteOptions(), filename, value);
 	assert(s.ok());
-
-	unserialize(out, size);
 
 	delete[] out;
 }
@@ -77,6 +73,18 @@ HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsign
 	file->m_tree->unserialize(data + s, size - s);
 
 	return file;
+}
+
+void HashDatabase::list()
+{
+	auto it = m_db->NewIterator(leveldb::ReadOptions());
+	
+	for (it->SeekToFirst(); it->Valid(); it->Next()) {
+		std::cout << it->key().ToString() << std::endl;
+	}
+
+	assert(it->status().ok());
+	delete it;
 }
 
 }

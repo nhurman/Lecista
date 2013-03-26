@@ -35,6 +35,10 @@ void HashTree::hashBase(string const& filename)
 	m_filesize = boost::filesystem::file_size(filename);
 	unsigned int blocks = ceil(m_filesize / (float)BLOCK_SIZE);
 
+	if (0 == blocks) { // Empty file
+		blocks = 1;
+	}
+
 	vector<Hash::SharedPtr> hashList(blocks);
 	char buffer[1000 * 1000]; // 1 MB
 	unsigned int toRead, read;
@@ -48,8 +52,11 @@ void HashTree::hashBase(string const& filename)
 		while (toRead > 0 && !fh.eof()) {
 			fh.read(buffer, min(toRead, (unsigned int)sizeof buffer));
 			read = fh.gcount();
-			toRead -= read;
-			hasher.update(&buffer[0], read);
+			
+			if (read > 0) {
+				toRead -= read;
+				hasher.update(&buffer[0], read);
+			}
 		}
 
 		hashList[i] = hasher.getHash();
@@ -129,6 +136,10 @@ unsigned int HashTree::getSerializedSize() const
 
 	// How many hashes are contained in this tree ?
 	unsigned int lastLevel = ceil(m_filesize / (float)BLOCK_SIZE);
+	if (0 == lastLevel) { // Empty file
+		lastLevel = 1;
+	}
+
 	unsigned int total = lastLevel;
 	if (total > 1) {
 		total += 1;
@@ -165,11 +176,15 @@ unsigned int HashTree::serialize(char*& out) const
 bool HashTree::unserialize(char const* data, unsigned int size)
 {
 	unsigned int i_hashlist  = sizeof m_filesize;
-
 	memcpy(&m_filesize, data, sizeof m_filesize);
 	m_tree.clear();
 
-	for (unsigned int lastLevel = 2 * ceil(m_filesize / (float)BLOCK_SIZE); lastLevel != 1; ) {
+	unsigned int lastLevel = ceil(m_filesize / (float)BLOCK_SIZE);
+	if (0 == lastLevel) { // Empty file
+		lastLevel = 1;
+	}
+
+	for (lastLevel = 2 * lastLevel; lastLevel != 1; ) {
 		lastLevel = ceil(lastLevel / 2.);
 
 		vector<Hash::SharedPtr> level(lastLevel);

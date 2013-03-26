@@ -7,6 +7,10 @@ function runApp {
 	$2 $d/$e
 }
 
+d=`readlink -f $0`
+d=`dirname $d`
+cd $d
+
 if [ -z $1 ] || [ "$1" == "release" ]; then
   runApp release exec
 elif [ "$1" = "debug" ]; then

@@ -30,11 +30,12 @@ public:
 		HashTree *m_tree;
 	};
 
-	HashDatabase(std::string const& database = "hash_database");
+	HashDatabase(std::string const& database = "hashdb");
 	~HashDatabase();
 
 	void addFile(std::string const& filename);
 	File::SharedPtr getFile(std::string const& filename);
+	void list();
 
 private:
 	leveldb::DB *m_db;
