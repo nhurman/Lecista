@@ -33,7 +33,9 @@ HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
 	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), filename, &data);
 	assert(s.ok());
 
-	return unserialize(data.c_str(), data.length());
+	HashDatabase::File::SharedPtr file = unserialize(data.c_str(), data.length());
+	file->m_filename = filename;
+	return file;
 }
 
 unsigned int HashDatabase::serialize(std::string const& filename, char*& out) const
@@ -41,16 +43,14 @@ unsigned int HashDatabase::serialize(std::string const& filename, char*& out) co
 	time_t lastWrite = boost::filesystem::last_write_time(filename);
 	HashTree tree(filename);
 
-	unsigned int s_filename = filename.length() + 1;
 	unsigned int s_lastWrite = sizeof lastWrite;
 	unsigned int s_tree = tree.getSerializedSize();
-	unsigned int size = s_filename + s_lastWrite + s_tree;
+	unsigned int size = s_lastWrite + s_tree;
 	
 	out = new char[size];
-	std::memcpy(out, filename.c_str(), s_filename);
-	std::memcpy(out + s_filename, &lastWrite, s_lastWrite);
+	std::memcpy(out, &lastWrite, s_lastWrite);
 
-	char *treeBeginning = out + s_filename + s_lastWrite;
+	char *treeBeginning = out + s_lastWrite;
 	tree.serialize(treeBeginning);
 
 	return size;
@@ -59,18 +59,10 @@ unsigned int HashDatabase::serialize(std::string const& filename, char*& out) co
 HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsigned int size)
 {
 	File::SharedPtr file(new File(new HashTree()));
-
-	unsigned int s_filename;
 	unsigned int s_lastWrite = sizeof(file->m_lastWrite);
 
-	for (s_filename = 0; s_filename < size && data[s_filename] != 0; ++s_filename);
-	assert(s_filename < size);
-
-	file->m_filename = data;
-	memcpy(&(file->m_lastWrite), data + s_filename + 1, s_lastWrite);
-
-	unsigned int s = s_filename + 1 + s_lastWrite;
-	file->m_tree->unserialize(data + s, size - s);
+	memcpy(&(file->m_lastWrite), data, s_lastWrite);
+	file->m_tree->unserialize(data + s_lastWrite, size - s_lastWrite);
 
 	return file;
 }
