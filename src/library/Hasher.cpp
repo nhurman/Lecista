@@ -48,7 +48,7 @@ Hash::SharedPtr Hasher::hashFile(char const* filename)
 	char buffer[1000 * 1000]; // 1Mo
 
 	Hasher hasher;
-	
+
 	while (!fh.eof()) {
 		fh.read(buffer, sizeof buffer);
 		hasher.update(&buffer[0], fh.gcount());

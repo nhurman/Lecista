@@ -53,7 +53,7 @@ unsigned int HashDatabase::serialize(std::string const& filename, char*& out) co
 	unsigned int s_lastWrite = sizeof lastWrite;
 	unsigned int s_tree = tree.getSerializedSize();
 	unsigned int size = s_lastWrite + s_tree;
-	
+
 	out = new char[size];
 	std::memcpy(out, &lastWrite, s_lastWrite);
 
@@ -112,7 +112,7 @@ void HashDatabase::rehash()
 {
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
 	time_t lastWrite;
-	
+
 	for (it->SeekToFirst(); it->Valid(); it->Next()) {
 		HashDatabase::File::SharedPtr file = unserialize(it->value(), false);
 		std::string filename = it->key().ToString();

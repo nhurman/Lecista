@@ -29,7 +29,7 @@ void HashTree::hashBase(string const& filename)
 	if (!fh.is_open()) {
 		throw boost::filesystem::filesystem_error("Could not open file", filename, boost::system::error_code());
 	}
-	
+
 	Hasher hasher;
 
 	m_filesize = boost::filesystem::file_size(filename);
@@ -52,7 +52,7 @@ void HashTree::hashBase(string const& filename)
 		while (toRead > 0 && !fh.eof()) {
 			fh.read(buffer, min(toRead, (unsigned int)sizeof buffer));
 			read = fh.gcount();
-			
+
 			if (read > 0) {
 				toRead -= read;
 				hasher.update(&buffer[0], read);
