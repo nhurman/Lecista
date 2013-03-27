@@ -67,6 +67,33 @@ HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsign
 	return file;
 }
 
+void HashDatabase::delDirectory(std::string path)
+{
+	assert(path.length() > 0);
+
+	boost::filesystem::path slash("/");
+	std::string preferredSlash = slash.make_preferred().native();
+
+	if (path[path.length() - 1] != preferredSlash[0])
+		path += preferredSlash[0];
+
+	auto it = m_db->NewIterator(leveldb::ReadOptions());
+	for (it->SeekToFirst(); it->Valid(); it->Next()) {
+		char const* key = it->key().data();
+		bool found = true;
+		for (int i = 0; i < path.length() && i < it->key().size(); ++i) {
+			if (path[i] != key[i]) {
+				found = false;
+				break;
+			}
+		}
+
+		if (found && it->key().size() >= path.length()) {
+			m_db->Delete(leveldb::WriteOptions(), it->key());
+		}
+	}
+}
+
 void HashDatabase::list()
 {
 	auto it = m_db->NewIterator(leveldb::ReadOptions());

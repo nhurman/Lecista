@@ -236,6 +236,7 @@ makedirs:
 #############################################################################
 
 LOBJ = \
+	$(B)/library/Config.o \
 	$(B)/library/DirectoryExplorer.o \
 	$(B)/library/Hash.o \
 	$(B)/library/Hasher.o \

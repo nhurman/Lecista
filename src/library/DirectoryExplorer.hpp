@@ -1,12 +1,14 @@
 #pragma once
 
 #include <string>
+#include <map>
 #include <deque>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <leveldb/db.h>
 #include <boost/filesystem.hpp>
+
 #include "Config.hpp"
 #include "HashDatabase.hpp"
 
@@ -15,19 +17,11 @@ namespace Lecista {
 class DirectoryExplorer
 {
 public:
-	struct Directory
-	{
-		Directory() : size(0), files(0) {}
-
-		std::string name;
-		float size;
-		unsigned int files;
-	};
-
 	DirectoryExplorer(HashDatabase& db, Config& config);
 	template<class T> static std::string formatSize(T size);
-	Directory addDirectory(std::string path);
-	std::deque<std::string> listDirectories();
+	Config::Directory addDirectory(std::string path);
+	void delDirectory(std::string path);
+	std::map<std::string, Config::Directory> const& listDirectories() const;
 
 private:
 	HashDatabase& m_db;

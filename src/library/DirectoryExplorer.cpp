@@ -20,29 +20,50 @@ template<class T> string DirectoryExplorer::formatSize(T size) {
 	else if ((size /= 1000) < 1000) unit = "MB";
 	else if ((size /= 1000) < 1000) unit = "GB";
 	else if ((size /= 1000) < 1000) unit = "TB";
-	else { size /= 1000.; unit = "PB"; }
+	else { size /= 1000 ; unit = "PB"; }
 
-    int precision = 5;
-    if (size < 1) precision = 2;
-    else if (size < 10) precision = 3;
-    else if (size < 100) precision = 4;
+	int precision = 5;
+	if (size < 1) precision = 2;
+	else if (size < 10) precision = 3;
+	else if (size < 100) precision = 4;
 
-    ostringstream ss;
-    ss << setprecision(precision) << size;
+	ostringstream ss;
+	ss << setprecision(precision) << size;
 
 	return ss.str() + " " + unit;
 }
 
-DirectoryExplorer::Directory DirectoryExplorer::addDirectory(string rootpath)
+Config::Directory DirectoryExplorer::addDirectory(string rootpath)
 {
 	boost::system::error_code ec;
 	deque<string> openList, closedList;
-	Directory dir;
+	Config::Directory dir;
 
 	try {
-		openList.push_back(fs::canonical(rootpath).string());
-		dir.name = openList.front();
+		rootpath = fs::canonical(rootpath).string();
+		openList.push_back(rootpath);
 	} catch (fs::filesystem_error& e) {}
+
+	boost::filesystem::path slash("/");
+	std::string preferredSlash = slash.make_preferred().native();
+
+	if (rootpath[rootpath.length() - 1] != preferredSlash[0])
+		rootpath += preferredSlash[0];
+
+	dir.name = rootpath;
+	for (auto const& e: m_config.shares()) {
+		bool found = true;
+		for (int i = 0; i < rootpath.length() && i < e.second.name.length(); ++i) {
+			if (rootpath[i] != e.second.name[i]) {
+				found = false;
+				break;
+			}
+		}
+
+		if (found && rootpath.length() >= e.second.name.length()) {
+			return Config::Directory();
+		}
+	}
 
 	while (!openList.empty()) {
 		string path = openList.front();
@@ -67,14 +88,45 @@ DirectoryExplorer::Directory DirectoryExplorer::addDirectory(string rootpath)
 		}
 	}
 
-	m_config.addShare(fs::canonical(rootpath).string());
+	m_config.addShare(dir);
 	return dir;
 }
 
-deque<string> DirectoryExplorer::listDirectories()
+void DirectoryExplorer::delDirectory(string rootpath)
 {
-	m_db.list();
-	return deque<string>();
+	rootpath = fs::canonical(rootpath).string();
+	deque<string> toDelete;
+
+	for (auto const& e: m_config.shares()) {
+		bool found = true;
+		for (int i = 0; i < rootpath.length() && i < e.second.name.length(); ++i) {
+			if (rootpath[i] != e.second.name[i]) {
+				found = false;
+				break;
+			}
+		}
+
+		if (found && rootpath.length() <= e.second.name.length()) {
+			toDelete.push_back(e.second.name) ;
+		}
+	}
+
+	for (string const& s: toDelete) {
+		m_config.delShare(s);
+		m_db.delDirectory(s);
+	}
+}
+
+map<string, Config::Directory> const& DirectoryExplorer::listDirectories() const
+{
+	map<string, Config::Directory> const& shares = m_config.shares();
+
+	for (auto const& e: shares) {
+		std::cout << e.second.name << "(" << e.second.files << " files, "
+			<< formatSize(e.second.size) << ")" << std::endl;
+	}
+
+	return shares;
 }
 
 }

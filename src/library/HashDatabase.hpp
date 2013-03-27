@@ -35,6 +35,7 @@ public:
 
 	void addFile(std::string const& filename);
 	File::SharedPtr getFile(std::string const& filename);
+	void delDirectory(std::string path);
 	void list();
 
 private:
