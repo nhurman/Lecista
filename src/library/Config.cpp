@@ -36,10 +36,11 @@ void Config::load()
 	try {
 		for (ptree::value_type &v: m_ptree.get_child("config.shares")) {
 			if (boost::algorithm::starts_with(v.first, "directory")) {
-				m_shares[v.second.data()].name = v.second.data();
-				m_shares[v.second.data()].files
+				std::string key = boost::filesystem::canonical(v.second.data()).filename().string();
+				m_shares[key].name = v.second.data();
+				m_shares[key].files
 					= boost::lexical_cast<unsigned int>(v.second.get_child("<xmlattr>.files").data());
-				m_shares[v.second.data()].size
+				m_shares[key].size
 					= boost::lexical_cast<float>(v.second.get_child("<xmlattr>.size").data());
 			}
 		}

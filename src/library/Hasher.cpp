@@ -38,7 +38,7 @@ Hash::SharedPtr Hasher::getHash()
 	return hash;
 }
 
-Hash::SharedPtr Hasher::hashFile(const char *filename)
+Hash::SharedPtr Hasher::hashFile(char const* filename)
 {
 	std::ifstream fh(filename, std::ios::binary);
 	if (!fh.is_open()) {
@@ -57,10 +57,10 @@ Hash::SharedPtr Hasher::hashFile(const char *filename)
 	return hasher.getHash();
 }
 
-Hash::SharedPtr Hasher::hashString(const char *string, int size)
+Hash::SharedPtr Hasher::hashString(char const* data, int size)
 {
 	Hasher hasher;
-	hasher.update(string, size);
+	hasher.update(data, size);
 	return hasher.getHash();
 }
 

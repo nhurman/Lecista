@@ -279,6 +279,9 @@ distclean: clean
 dist:
 	git archive --format zip --output $(CLIENTBIN)-$(VERSION).zip HEAD
 
+doc:
+	doxygen Doxyfile
+
 .PHONY: all clean clean2 clean-debug clean-release copyfiles \
 debug default dist distclean makedirs \
-release targets
+release targets doc

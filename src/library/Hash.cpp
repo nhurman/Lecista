@@ -5,6 +5,7 @@ namespace Lecista {
 Hash::Hash()
 {
 	m_hash = new unsigned char[SIZE];
+	std::memset(m_hash, 0, SIZE);
 }
 
 Hash::Hash(Hash const& other)
@@ -12,7 +13,7 @@ Hash::Hash(Hash const& other)
 	*this = other;
 }
 
-Hash::Hash(const char *data)
+Hash::Hash(char const* data)
 {
 	m_hash = new unsigned char[SIZE];
 	std::memcpy(m_hash, data, SIZE);
