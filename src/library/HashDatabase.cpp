@@ -38,6 +38,13 @@ HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
 	return file;
 }
 
+bool HashDatabase::exists(std::string const& filename)
+{
+	std::string value;
+	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), filename, &value);
+	return s.ok();
+}
+
 unsigned int HashDatabase::serialize(std::string const& filename, char*& out) const
 {
 	time_t lastWrite = boost::filesystem::last_write_time(filename);
@@ -56,15 +63,22 @@ unsigned int HashDatabase::serialize(std::string const& filename, char*& out) co
 	return size;
 }
 
-HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsigned int size)
+HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsigned int size, bool tree)
 {
 	File::SharedPtr file(new File(new HashTree()));
 	unsigned int s_lastWrite = sizeof(file->m_lastWrite);
 
 	memcpy(&(file->m_lastWrite), data, s_lastWrite);
-	file->m_tree->unserialize(data + s_lastWrite, size - s_lastWrite);
+	if (tree) {
+		file->m_tree->unserialize(data + s_lastWrite, size - s_lastWrite);
+	}
 
 	return file;
+}
+
+HashDatabase::File::SharedPtr HashDatabase::unserialize(leveldb::Slice const& slice, bool tree)
+{
+	return unserialize(slice.data(), slice.size(), tree);
 }
 
 void HashDatabase::delDirectory(std::string path)
@@ -94,10 +108,33 @@ void HashDatabase::delDirectory(std::string path)
 	}
 }
 
+void HashDatabase::rehash()
+{
+	auto it = m_db->NewIterator(leveldb::ReadOptions());
+	time_t lastWrite;
+	
+	for (it->SeekToFirst(); it->Valid(); it->Next()) {
+		HashDatabase::File::SharedPtr file = unserialize(it->value(), false);
+		std::string filename = it->key().ToString();
+
+		try {
+			lastWrite = boost::filesystem::last_write_time(filename);
+
+			if (lastWrite != file->lastWrite()) {
+				// Update hash
+				addFile(filename);
+			}
+		} catch (boost::filesystem::filesystem_error& e) {
+			// File no longer exists, remove it from the index
+			m_db->Delete(leveldb::WriteOptions(), it->key());
+		}
+	}
+}
+
 void HashDatabase::list()
 {
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
-	
+
 	for (it->SeekToFirst(); it->Valid(); it->Next()) {
 		std::cout << it->key().ToString() << std::endl;
 	}

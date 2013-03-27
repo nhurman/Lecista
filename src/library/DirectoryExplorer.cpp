@@ -33,7 +33,7 @@ template<class T> string DirectoryExplorer::formatSize(T size) {
 	return ss.str() + " " + unit;
 }
 
-Config::Directory DirectoryExplorer::addDirectory(string rootpath)
+Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 {
 	boost::system::error_code ec;
 	deque<string> openList, closedList;
@@ -51,17 +51,21 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath)
 		rootpath += preferredSlash[0];
 
 	dir.name = rootpath;
-	for (auto const& e: m_config.shares()) {
-		bool found = true;
-		for (int i = 0; i < rootpath.length() && i < e.second.name.length(); ++i) {
-			if (rootpath[i] != e.second.name[i]) {
-				found = false;
-				break;
-			}
-		}
 
-		if (found && rootpath.length() >= e.second.name.length()) {
-			return Config::Directory();
+	if (!rescan) { // Check if this directory is already shared
+		for (auto e: m_config.shares()) {
+			bool found = true;
+			for (int i = 0; i < rootpath.length() && i < e.second.name.length(); ++i) {
+				if (rootpath[i] != e.second.name[i]) {
+					found = false;
+					break;
+				}
+			}
+
+			if (found && rootpath.length() >= e.second.name.length()) {
+				// Only perform a scan of added/removed files and update index
+				rescan = true;
+			}
 		}
 	}
 
@@ -72,14 +76,19 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath)
 
 		for (fs::directory_iterator end, i(path, ec); i != end; ++i) {
 			try {
-				string p = fs::canonical(i->path()).string();
+				string c = fs::canonical(i->path()).string();
+				string p = i->path().string();
+
 				// Avoid cyclic links
-				if (find(closedList.begin(), closedList.end(), p) == closedList.end()) {
+				if (find(closedList.begin(), closedList.end(), c) == closedList.end()) {
 					if (fs::is_directory(i->path())) {
-						openList.push_back(i->path().string());
+						openList.push_back(c);
 					}
 					else if (fs::is_regular_file(i->path())) {
-						m_db.addFile(i->path().string());
+						if (!rescan || !m_db.exists(p)) {
+							m_db.addFile(p);
+						}
+
 						dir.size += fs::file_size(i->path());
 						++dir.files;
 					}
@@ -127,6 +136,13 @@ map<string, Config::Directory> const& DirectoryExplorer::listDirectories() const
 	}
 
 	return shares;
+}
+
+void DirectoryExplorer::rescan()
+{
+	for (auto const& e: m_config.shares()) {
+		addDirectory(e.second.name, true);
+	}
 }
 
 }

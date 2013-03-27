@@ -10,14 +10,7 @@ int main()
 {
 	Config config;
 	HashDatabase db;
-	
 	DirectoryExplorer explorer(db, config);
-
-	explorer.addDirectory("../src/library");
-	
-	explorer.listDirectories();
-	std::cout << "---" << std::endl;
-	db.list();
 
 	return 0;
 }

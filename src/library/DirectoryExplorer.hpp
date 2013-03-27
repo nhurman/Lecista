@@ -19,9 +19,10 @@ class DirectoryExplorer
 public:
 	DirectoryExplorer(HashDatabase& db, Config& config);
 	template<class T> static std::string formatSize(T size);
-	Config::Directory addDirectory(std::string path);
+	Config::Directory addDirectory(std::string path, bool rescan = false);
 	void delDirectory(std::string path);
 	std::map<std::string, Config::Directory> const& listDirectories() const;
+	void rescan();
 
 private:
 	HashDatabase& m_db;

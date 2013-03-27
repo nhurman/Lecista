@@ -35,14 +35,17 @@ public:
 
 	void addFile(std::string const& filename);
 	File::SharedPtr getFile(std::string const& filename);
+	bool exists(std::string const& filename);
 	void delDirectory(std::string path);
+	void rehash();
 	void list();
 
 private:
 	leveldb::DB *m_db;
 
 	unsigned int serialize(std::string const& filename, char*& out) const;
-	File::SharedPtr unserialize(char const* data, unsigned int size);
+	File::SharedPtr unserialize(char const* data, unsigned int size, bool tree = true);
+	File::SharedPtr unserialize(leveldb::Slice const& slice, bool tree = true);
 };
 
 }
