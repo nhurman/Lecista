@@ -6,7 +6,8 @@ namespace fs = boost::filesystem;
 
 namespace Lecista {
 
-DirectoryExplorer::DirectoryExplorer(HashDatabase& db) : m_db(db)
+DirectoryExplorer::DirectoryExplorer(HashDatabase& db, Config& config)
+ : m_db(db), m_config(config)
 {
 
 }
@@ -66,6 +67,7 @@ DirectoryExplorer::Directory DirectoryExplorer::addDirectory(string rootpath)
 		}
 	}
 
+	m_config.addShare(fs::canonical(rootpath).string());
 	return dir;
 }
 
