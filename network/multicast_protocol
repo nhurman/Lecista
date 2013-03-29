@@ -1,0 +1,123 @@
+# Multicast Protocol
+
+One Lecista Gateway per network (elected randomly)
+Inter-network communication through Lecista Gateways
+Communication within one network using multicast
+
+Network topology (* means gateway)
+----------------------------------
+	A (10.133.1.1)
+	B*(10.133.1.2)   NETWORK 1
+	C (10.133.1.3)
+
+	G*(10.133.2.1)
+	H (10.133.2.2)   NETWORK 2
+
+	X (10.133.3.1)
+	Y (10.133.3.2)   NETWORK 3
+	Z*(10.133.3.3)
+
+Networks can communicate together with their default
+gateway (independant from Lecista)
+
+Gateway election
+----------------
+"Candidate random_number"
+
+Client A starts Lecista
+	A -> (mcast) "DiscoverGateway"
+
+Option 1: A gets an answer, B is the gateway
+	A <- B "Gateway"
+
+Option 2: A gets no answer
+	A -> (mcast) "ElectGateway"
+	A -> (mcast) "Candidate 6"
+	A <- B "Candidate 3"
+	A <- C "Candidate 1"
+
+	Timeout occurs
+	- A, B and C sort the candidates using their random id
+	- A, B and C calculate "1 + 3 + 6 % number_of_candidates" = 1
+	- Candidate with the 2nd id is elected (first candidate is 0, second is 1), B
+	- Elected candidate announces itself on the network
+
+	B -> (mcast) "Gateway"
+
+Gateway timeout
+---------------
+Before leaving the network, the gateway has to send an election message without applying.
+	B -> (mcast) "ElectGateway"
+
+Every 2 seconds, the gateway has to send a packet to say it's still alive
+	B -> (mcast) "Gateway"
+
+If the gateway times out (2 seconds), first client to notice starts the election process.
+Before sending that message, the client waits a random time between 0 and 0.5 seconds.
+If no "ElectGateway" command has been received, it sends it.
+	C -> (mcast) "ElectGateway"
+	C -> (mcast) "Candidate 4"
+If an "ElectGateway" message is received while an election is in progress,
+the current election starts over (clients must send "Candidate x" again).
+
+Gateway announcement
+--------------------
+Right after beeing elected, a gateway has to announce itself to other networks and ask for their gateway.
+Lecista contains a list of hard-coded broadcast addresses.
+
+	B -> (bcast 1) "RemoteGateway"
+	B -> (bcast 2) "RemoteGateway"
+	B -> (bcast 3) "RemoteGateway"
+	G -> B "Gateway"
+	Z -> B "Gateway"
+
+The gateway must not reply to "RemoteGateway" commands until it has finished initializing itself.
+Therefore, B does not reply to its own "RemoteGateway" query.
+
+When a gateway receives the "RemoteGateway" command, it has to reply with its ip address:
+
+	B <- Z "RemoteGateway"
+	B -> Z "Gateway"
+
+Gateway command forwarding
+--------------------------
+A gateway's role is to forward commands from its current network to nearby networks.
+When a gateway receives a multicast message, it sends it to other networks' gateways.
+
+"Command" is "source_ip keyword arguments".
+Gateways must keep a list of forwarded messages to avoid sending back commands they just
+received after sending them on the multicast group.
+
+	A -> (mcast) "Command"
+	C <- A "Command"
+	B <- A "Command"
+		B -> G (gw) "Forward Command"
+		G <- B "Forward Command"
+			G -> (mcast) "Command"
+			H <- G "Command"
+		B -> Z (gw) "Forward Command"
+		Z <- B "Forward Command"
+			Z -> (mcast) "Command"
+			X <- Z "Command"
+			Y <- Z "Command"
+
+Multicast Commands Index
+------------------------
+All commands are contained in a CommandContainer :
+
+	+--------------------------------------------------------------------------------+
+	|           Header (8 bytes)          |          Body (body_size bytes)          |
+	|--------------------------------------------------------------------------------|
+	| uint src_ipaddress | uint body_size | char command_id | char[body_size-1] args |
+	+--------------------------------------------------------------------------------+
+
+- Candidate (uint randomId)
+- DiscoverGateway
+- ElectGateway
+- Forward (string command)
+- Hello (string name, float sharedSize)
+- Message (string message)
+- SearchBlock (string rootHash, uint block_id)
+- SearchFile (string filename)
+
+Unicast related commands: HaveFile, HaveBlock
