@@ -82,7 +82,7 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 				// Avoid cyclic links
 				if (find(closedList.begin(), closedList.end(), c) == closedList.end()) {
 					if (fs::is_directory(i->path())) {
-						openList.push_back(c);
+						openList.push_back(p);
 					}
 					else if (fs::is_regular_file(i->path())) {
 						if (!rescan || !m_db.exists(p)) {
