@@ -8,7 +8,7 @@ namespace Lecista {
 class MulticastHandler
 {
 public:
-	static char const* MCAST_ADDR;
+	static boost::asio::ip::address const MCAST_ADDR;
 	static unsigned short const MCAST_PORT;
 	static unsigned char const HEADER_SIZE;
 

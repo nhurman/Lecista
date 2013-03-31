@@ -4,7 +4,7 @@ using namespace boost::asio;
 
 namespace Lecista {
 
-char const* MulticastHandler::MCAST_ADDR = "224.0.0.150";
+ip::address const MulticastHandler::MCAST_ADDR = ip::address::from_string("224.0.0.150");
 unsigned short const MulticastHandler::MCAST_PORT = 50400;
 unsigned char const MulticastHandler::HEADER_SIZE =
 	sizeof(ip::address_v4::bytes_type) + sizeof(char);
@@ -12,14 +12,14 @@ unsigned char const MulticastHandler::HEADER_SIZE =
 MulticastHandler::MulticastHandler(IOHandler& io) : m_io(io), m_socket(io.ioService())
 {
 	// Set up multicast server
-	ip::address listenAddress = ip::address::from_string("0.0.0.0");
+	ip::address listenAddress = ip::address_v4(0);
 	ip::udp::endpoint listenEndpoint(listenAddress, MCAST_PORT);
 	m_socket.open(listenEndpoint.protocol());
-	//m_socket.set_option(ip::udp::socket::reuse_address(true));
+	m_socket.set_option(ip::udp::socket::reuse_address(true));
 	m_socket.bind(listenEndpoint);
 
 	// Join the multicast group
-	ip::address multicastAddress = ip::address::from_string(MCAST_ADDR);
+	ip::address multicastAddress = MCAST_ADDR;
 	m_socket.set_option(ip::multicast::join_group(multicastAddress));
 
 	// Listen for messages
@@ -42,8 +42,8 @@ void MulticastHandler::send(ip::udp::endpoint dest, Command command, char* data,
 {
 	char packet[HEADER_SIZE + 1 + size];
 
-	// Build header, 0.0.0.0 ip means "Use the one you see the packet coming from"
-	std::memset(packet, 0, sizeof(ip::address_v4::bytes_type));
+	// Build header, 0.0.0.0 ip means "Use the one you see the packet coming from
+	*reinterpret_cast<uint32_t*>(packet) = 0;
 	packet[HEADER_SIZE - 1] = size + 1;
 
 	// Append command and arguments
@@ -51,8 +51,7 @@ void MulticastHandler::send(ip::udp::endpoint dest, Command command, char* data,
 	std::memcpy(&packet[HEADER_SIZE + 1], data, size);
 
 	// Send
-	m_socket.async_send_to(
-		boost::asio::buffer(packet, sizeof packet),
+	m_socket.async_send_to(boost::asio::buffer(packet, sizeof packet),
 		dest, &nullHandler);
 
 	std::cout << "I just sent a packet to " << dest.address().to_string()
@@ -63,23 +62,21 @@ void MulticastHandler::send(ip::udp::endpoint dest, Command command, char* data,
 
 void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 {
-	if (bytes < HEADER_SIZE) { // Incomplete packet, drop it
+	if (bytes < HEADER_SIZE + 1) { // Incomplete packet, drop it
 		listen();
 		return;
 	}
 
 	// Parse header
-	ip::address_v4::bytes_type sourceIp;
-	std::memcpy(&sourceIp, m_buffer, sizeof sourceIp);
-	ip::address_v4 sourceAddress_v4 = ip::address_v4(sourceIp);
-	m_senderAddress = sourceAddress_v4;
-
-	static ip::address nullIp = ip::address::from_string("0.0.0.0");
-	if (m_senderAddress == nullIp) {
+	uint32_t sourceIp = *reinterpret_cast<uint32_t*>(m_buffer);
+	if (0 == sourceIp) {
 		m_senderAddress = m_senderEndpoint.address();
 	}
+	else {
+		m_senderAddress = ip::address_v4(sourceIp);
+	}
 
-	unsigned char bodyLength = *(char*)(m_buffer + sizeof sourceIp);
+	unsigned char bodyLength = m_buffer[sizeof sourceIp];
 
 	// Incomplete packet, drop it
 	if (bodyLength < sizeof(Command) || bytes != (HEADER_SIZE + bodyLength)) {
@@ -88,9 +85,7 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 	}
 
 	// Extract command id
-	Command command;
-	std::memcpy(&command, m_buffer + HEADER_SIZE, sizeof command);
-
+	Command command = static_cast<Command>(m_buffer[HEADER_SIZE]);
 	if (command >= Command::NUM_COMMANDS) {
 		listen();
 		return;
@@ -101,7 +96,7 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 
 	// Dispatch command to handler
 	if (Command::Candidate == command && sizeof(uint32_t) == argsSize) {
-		on_candidate(*(uint32_t*)args);
+		on_candidate(*reinterpret_cast<uint32_t*>(args));
 	}
 	else if (Command::DiscoverGateway == command && 0 == argsSize) {
 		on_discoverGateway();
@@ -111,14 +106,14 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 	}
 	else if (Command::Hello == command && sizeof(float) < argsSize) {
 		on_hello(std::string(args, argsSize - sizeof(float)),
-			*(float*)(args + argsSize - sizeof(float)));
+			*reinterpret_cast<float*>(args + argsSize - sizeof(float)));
 	}
 	else if (Command::Message == command && 0 < argsSize) {
 		on_message(std::string(args, argsSize));
 	}
 	else if (Command::SearchBlock == command && sizeof(uint32_t) < argsSize) {
 		on_searchBlock(std::string(args, argsSize - sizeof(uint32_t)),
-			*(uint32_t*)(args + argsSize - sizeof(uint32_t)));
+			*reinterpret_cast<uint32_t*>(args + argsSize - sizeof(uint32_t)));
 	}
 	else if (Command::SearchFile == command && 0 < argsSize) {
 		on_searchFile(std::string(args, argsSize));
