@@ -9,7 +9,8 @@ unsigned short const MulticastHandler::MCAST_PORT = 50400;
 unsigned char const MulticastHandler::HEADER_SIZE =
 	sizeof(ip::address_v4::bytes_type) + sizeof(char);
 
-MulticastHandler::MulticastHandler(IOHandler& io) : m_io(io)
+MulticastHandler::MulticastHandler(IOHandler& io)
+: m_io(io), m_election(io)
 {
 	m_socket = m_io.createUdpSocket();
 
@@ -25,11 +26,12 @@ MulticastHandler::MulticastHandler(IOHandler& io) : m_io(io)
 
 	// Listen for messages
 	listen();
-	m_io.createThread();
+	m_io.start();
 }
 
 MulticastHandler::~MulticastHandler()
 {
+	m_io.stop();
 	delete m_socket;
 }
 
@@ -37,20 +39,21 @@ void MulticastHandler::listen()
 {
 	static boost::function<void(boost::system::error_code, size_t)> readHandler =
 		boost::bind(
-			&MulticastHandler::on_newData, this,
+			&MulticastHandler::on_read, this,
 			placeholders::error,
 			placeholders::bytes_transferred);
-	m_socket->async_receive_from(
-		boost::asio::buffer(m_buffer, sizeof m_buffer),
-		m_senderEndpoint, readHandler);
+	static boost::asio::mutable_buffers_1 b =
+		boost::asio::buffer(m_readBuffer, sizeof m_readBuffer);
+
+	m_socket->async_receive_from(b, m_senderEndpoint, readHandler);
 }
 
-void MulticastHandler::send(ip::udp::endpoint dest, Command command, char* data, char size)
+void MulticastHandler::send(ip::udp::endpoint dest, Command command, char const* data, char size)
 {
-	char packet[HEADER_SIZE + 1 + size];
+	boost::shared_array<char> packet(new char[HEADER_SIZE + 1 + size]);
 
 	// Build header, 0.0.0.0 ip means "Use the one you see the packet coming from
-	*reinterpret_cast<uint32_t*>(packet) = 0;
+	packet[0] = packet[1] = packet[2] = packet[3] = 0;
 	packet[HEADER_SIZE - 1] = size + 1;
 
 	// Append command and arguments
@@ -58,24 +61,34 @@ void MulticastHandler::send(ip::udp::endpoint dest, Command command, char* data,
 	std::memcpy(&packet[HEADER_SIZE + 1], data, size);
 
 	// Send
-	m_socket->async_send_to(boost::asio::buffer(packet, sizeof packet),
-		dest, &nullHandler);
-
-	std::cout << "I just sent a packet to " << dest.address().to_string()
-		<< ":" << dest.port() << std::endl;
-	std::cout.write(packet, sizeof packet);
-	std::cout << std::endl;
+	static auto writeHandler = boost::bind(
+		&MulticastHandler::on_write, this,
+		placeholders::error,
+		placeholders::bytes_transferred,
+		packet);
+	m_socket->async_send_to(boost::asio::buffer(packet.get(), HEADER_SIZE + 1 + size),
+		dest, writeHandler);
 }
 
-void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
+void MulticastHandler::on_read(boost::system::error_code ec, size_t bytes)
 {
+	if (ec) {
+		// Shutting down ?
+		if (boost::asio::error::operation_aborted != ec) {
+			LOG_DEBUG("Error in on_read: " << ec.value());
+		}
+
+		return;
+	}
+
+
 	if (bytes < HEADER_SIZE + 1) { // Incomplete packet, drop it
 		listen();
 		return;
 	}
 
 	// Parse header
-	uint32_t sourceIp = ntohl(*reinterpret_cast<uint32_t*>(m_buffer));
+	uint32_t sourceIp = ntohl(*reinterpret_cast<uint32_t*>(m_readBuffer));
 	if (0 == sourceIp) {
 		m_senderAddress = m_senderEndpoint.address();
 	}
@@ -83,7 +96,7 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 		m_senderAddress = ip::address_v4(sourceIp);
 	}
 
-	unsigned char bodyLength = m_buffer[sizeof sourceIp];
+	unsigned char bodyLength = m_readBuffer[sizeof sourceIp];
 
 	// Incomplete packet, drop it
 	if (bodyLength < sizeof(Command) || bytes != (HEADER_SIZE + bodyLength)) {
@@ -92,13 +105,13 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 	}
 
 	// Extract command id
-	Command command = static_cast<Command>(m_buffer[HEADER_SIZE]);
+	Command command = static_cast<Command>(m_readBuffer[HEADER_SIZE]);
 	if (command >= Command::NUM_COMMANDS) {
 		listen();
 		return;
 	}
 
-	char* args = m_buffer + HEADER_SIZE + 1;
+	char* args = m_readBuffer + HEADER_SIZE + 1;
 	char argsSize = bodyLength - 1;
 
 	// Dispatch command to handler
@@ -130,23 +143,53 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 	listen();
 }
 
+void MulticastHandler::on_write(boost::system::error_code ec, size_t bytes, boost::shared_array<char> data)
+{
+
+}
+
 /* Message handling methods below */
 
 void MulticastHandler::on_candidate(uint32_t id)
 {
-	std::cout << "on_candidate(" << id << ") from "
-		<< m_senderAddress.to_string() << std::endl;
+	LOG_DEBUG("on_candidate(" << id << ") from " << m_senderAddress.to_string());
+
+	m_election.registerCandidate(m_senderAddress, id);
 }
 
-void MulticastHandler::on_discoverGateway() {}
-void MulticastHandler::on_electGateway() {}
+void MulticastHandler::on_discoverGateway()
+{
+	LOG_DEBUG("on_discoverGateway() from " << m_senderAddress.to_string());
+}
+
+void MulticastHandler::on_electGateway()
+{
+	LOG_DEBUG("on_electGateway() from " << m_senderAddress.to_string());
+
+	m_election.start();
+}
+
 void MulticastHandler::on_hello(std::string name, float sharedSize)
 {
-	std::cout << "on_hello(" << name << ", " << sharedSize << ")" << std::endl;
+	LOG_DEBUG( "on_hello(" << name << ", " << sharedSize << ") from "	<< m_senderAddress.to_string());
+
+	ip::udp::endpoint ep(m_senderAddress, MCAST_PORT + 1);
+	send(ep, Command::DiscoverGateway, 0, 0);
 }
 
-void MulticastHandler::on_message(std::string message) {}
-void MulticastHandler::on_searchBlock(std::string rootHash, uint32_t blockId) {}
-void MulticastHandler::on_searchFile(std::string filename) {}
+void MulticastHandler::on_message(std::string message)
+{
+	LOG_DEBUG("on_message(" << message << ") from " << m_senderAddress.to_string());
+}
+
+void MulticastHandler::on_searchBlock(std::string rootHash, uint32_t blockId)
+{
+	LOG_DEBUG("on_searchBLock(" << rootHash << ", " << blockId << ") from " << m_senderAddress.to_string());
+}
+
+void MulticastHandler::on_searchFile(std::string filename)
+{
+	LOG_DEBUG("on_searchFile(" << filename << ") from " << m_senderAddress.to_string());
+}
 
 }

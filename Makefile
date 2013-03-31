@@ -64,7 +64,7 @@ TEMPDIR=/tmp
 endif
 
 ifndef DEBUG_CXXFLAGS
-DEBUG_CXXFLAGS=-g -O0
+DEBUG_CXXFLAGS=-g -O0 -DDEBUG
 endif
 
 BD=$(BUILD_DIR)/debug-$(PLATFORM)-$(ARCH)
@@ -161,6 +161,8 @@ endef
 LIBS += -lboost_system \
 	-lboost_filesystem \
 	-lboost_thread \
+	-lboost_date_time \
+	-lboost_chrono \
 	-lcrypto \
 	-lleveldb \
 	-lpthread
@@ -249,7 +251,8 @@ LOBJ = \
 LOBJ = \
 	$(B)/library/network/main.o \
 	$(B)/library/network/IOHandler.o \
-	$(B)/library/network/MulticastHandler.o
+	$(B)/library/network/MulticastHandler.o \
+	$(B)/library/network/GatewayElection.o
 
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(LOBJ)
 	$(echo_cmd) "LD $@"
