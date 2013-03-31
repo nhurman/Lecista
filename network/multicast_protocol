@@ -105,16 +105,15 @@ Multicast Commands Index
 ------------------------
 All commands are contained in a CommandContainer :
 
-	+--------------------------------------------------------------------------------+
-	|           Header (8 bytes)          |          Body (body_size bytes)          |
-	|--------------------------------------------------------------------------------|
-	| uint src_ipaddress | uint body_size | char command_id | char[body_size-1] args |
-	+--------------------------------------------------------------------------------+
+	+----------------------------------------------------------------------------+
+	|       Header (5 bytes)          |          Body (body_size bytes)          |
+	|----------------------------------------------------------------------------|
+	| char[4] src_ip | char body_size | char command_id | char[body_size-1] args |
+	+----------------------------------------------------------------------------+
 
 - Candidate (uint randomId)
 - DiscoverGateway
 - ElectGateway
-- Forward (string command)
 - Hello (string name, float sharedSize)
 - Message (string message)
 - SearchBlock (string rootHash, uint block_id)

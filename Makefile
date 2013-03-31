@@ -160,8 +160,10 @@ endef
 ## LIBS
 LIBS += -lboost_system \
 	-lboost_filesystem \
+	-lboost_thread \
 	-lcrypto \
-	-lleveldb
+	-lleveldb \
+	-lpthread
 
 #############################################################################
 # MAIN TARGETS
@@ -172,13 +174,11 @@ all: debug release
 
 debug:
 	@$(MAKE) targets B=$(BD) CXXFLAGS="$(CXXFLAGS) $(BASE_CXXFLAGS) $(DEBUG_CXXFLAGS)" \
-	OPTIMIZE="$(DEBUG_CXXFLAGS)" OPTIMIZEVM="$(DEBUG_CXXFLAGS)" \
-	V=$(V)
+	OPTIMIZE="$(DEBUG_CXXFLAGS)"
 
 release:
 	@$(MAKE) targets B=$(BR) CXXFLAGS="$(CXXFLAGS) $(BASE_CXXFLAGS)" \
-	OPTIMIZE="-DNDEBUG $(OPTIMIZE)" OPTIMIZEVM="-DNDEBUG $(OPTIMIZEVM)" \
-	V=$(V)
+	OPTIMIZE="$(OPTIMIZE)"
 
 # Create the build directories, check libraries and print out
 # an informational message, then start building
@@ -230,19 +230,26 @@ makedirs:
 	@if [ ! -d $(BUILD_DIR) ];then $(MKDIR) $(BUILD_DIR);fi
 	@if [ ! -d $(B) ];then $(MKDIR) $(B);fi
 	@if [ ! -d $(B)/library ];then $(MKDIR) $(B)/library;fi
+	@if [ ! -d $(B)/library/filesystem ];then $(MKDIR) $(B)/library/filesystem;fi
+	@if [ ! -d $(B)/library/network ];then $(MKDIR) $(B)/library/network;fi
 
 #############################################################################
 # LIBRARY
 #############################################################################
 
 LOBJ = \
-	$(B)/library/Config.o \
-	$(B)/library/DirectoryExplorer.o \
-	$(B)/library/Hash.o \
-	$(B)/library/Hasher.o \
-	$(B)/library/HashDatabase.o \
-	$(B)/library/HashTree.o \
-	$(B)/library/main.o
+	$(B)/library/filesystem/Config.o \
+	$(B)/library/filesystem/DirectoryExplorer.o \
+	$(B)/library/filesystem/Hash.o \
+	$(B)/library/filesystem/Hasher.o \
+	$(B)/library/filesystem/HashDatabase.o \
+	$(B)/library/filesystem/HashTree.o
+	#$(B)/library/filesystem/main.o
+
+LOBJ = \
+	$(B)/library/network/main.o \
+	$(B)/library/network/IOHandler.o \
+	$(B)/library/network/MulticastHandler.o
 
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(LOBJ)
 	$(echo_cmd) "LD $@"
@@ -253,6 +260,12 @@ $(B)/$(CLIENTBIN)$(FULLBINEXT): $(LOBJ)
 #############################################################################
 
 $(B)/library/%.o: $(LDIR)/%.cpp
+	$(DO_CXX)
+
+$(B)/library/filesystem/%.o: $(LDIR)/filesystem/%.cpp
+	$(DO_CXX)
+
+$(B)/library/network/%.o: $(LDIR)/network/%.cpp
 	$(DO_CXX)
 
 #############################################################################

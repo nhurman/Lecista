@@ -94,7 +94,7 @@ unsigned int HashTree::hashLevel()
 	return hashList.size();
 }
 
-vector<Hash::SharedPtr> HashTree::blockHashList(int index)
+vector<Hash::SharedPtr> HashTree::blockHashList(unsigned int index)
 {
 	vector<Hash::SharedPtr> hashList(m_tree.size() - 1);
 	unsigned int parent = index, sibling;
@@ -203,7 +203,7 @@ bool HashTree::unserialize(char const* data, unsigned int size)
 /* Static methods below */
 
 bool HashTree::checkBlockHash(
-	int index,
+	unsigned int index,
 	Hash::SharedPtr hash,
 	Hash::SharedPtr rootHash,
 	vector<Hash::SharedPtr> const& hashList)

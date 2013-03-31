@@ -56,7 +56,7 @@ public:
 	  \param index Block index
 	  \return Hash digests list
 	*/
-	std::vector<Hash::SharedPtr> blockHashList(int index);
+	std::vector<Hash::SharedPtr> blockHashList(unsigned int index);
 
 	//! Get the root hash for the current file
 	/*!
@@ -106,7 +106,7 @@ public:
 	  \return True if the block is valid
 	*/
 	static bool checkBlockHash(
-		int index,
+		unsigned int index,
 		Hash::SharedPtr hash,
 		Hash::SharedPtr rootHash,
 		std::vector<Hash::SharedPtr> const& hashList);
