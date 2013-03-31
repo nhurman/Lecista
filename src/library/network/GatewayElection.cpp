@@ -3,11 +3,12 @@
 namespace Lecista {
 
 boost::posix_time::time_duration const GatewayElection::ELECTION_DURATION
-= boost::posix_time::milliseconds(5000);
+	= boost::posix_time::milliseconds(5000);
 
-GatewayElection::GatewayElection(IOHandler& io) : m_io(io), m_inProgress(false)
+GatewayElection::GatewayElection(MulticastNetwork* network) : m_network(network)
 {
-	m_timer = m_io.createTimer();
+	m_inProgress = false;
+	m_timer = m_network->ioHandler().createTimer();
 }
 
 GatewayElection::~GatewayElection()
@@ -37,16 +38,32 @@ void GatewayElection::registerCandidate(boost::asio::ip::address host, uint32_t 
 		}
 		else { // Id collision
 			if (m_candidates[id] != host) { // Not a duplicate packet
-				if (m_candidates[id] > host) { // Keep the smallest ip address
-					m_candidates[id] = host;
-				}
+				// Restart election
+				start();
+				std::terminate();
 			}
 		}
 	}
 }
 
+void GatewayElection::setNotifier(Notifier notifier)
+{
+	m_notifier = notifier;
+}
+
 void GatewayElection::timeOut(boost::system::error_code ec)
 {
+	m_inProgress = false;
+
+	if (ec) {
+		if (boost::asio::error::operation_aborted != ec) {
+			LOG_DEBUG("Error in gateway election: " << ec.value());
+		}
+		return;
+	}
+
+	LOG_DEBUG("Gateway election finished");
+
 	int elected = 0;
 	int numCandidates = m_candidates.size();
 
@@ -61,7 +78,8 @@ void GatewayElection::timeOut(boost::system::error_code ec)
 			++i;
 		}
 
-		LOG_DEBUG("New gateway elected: " << i->second.to_string());
+		m_gateway = i->second;
+		LOG_DEBUG("New gateway: " << i->second.to_string());
 	}
 }
 

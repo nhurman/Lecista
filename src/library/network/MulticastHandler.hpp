@@ -5,6 +5,8 @@
 #include <boost/shared_array.hpp>
 #include "../Logger.hpp"
 #include "IOHandler.hpp"
+#include "MulticastNetwork.hpp"
+#include "MulticastGateway.hpp"
 #include "GatewayElection.hpp"
 
 namespace Lecista {
@@ -16,40 +18,21 @@ public:
 	~MulticastHandler();
 
 private:
-	enum class Command : unsigned char
-	{
-		Candidate,
-		DiscoverGateway,
-		ElectGateway,
-		Hello,
-		Message,
-		SearchBlock,
-		SearchFile,
+	MulticastNetwork* m_network;
+	boost::asio::ip::address* m_senderAddress;
 
-		NUM_COMMANDS
-	};
-
-	static boost::asio::ip::address const MCAST_ADDR;
-	static unsigned short const MCAST_PORT;
-	static unsigned char const HEADER_SIZE;
-
-	IOHandler& m_io;
-	boost::asio::ip::udp::socket* m_socket;
-	boost::asio::ip::udp::endpoint m_senderEndpoint;
-	boost::asio::ip::address m_senderAddress;
-	char m_readBuffer[256];
-
-	void on_read(boost::system::error_code ec, size_t bytes);
-	void on_write(boost::system::error_code ec, size_t bytes, boost::shared_array<char> data);
-
-	void listen();
-	void send(boost::asio::ip::udp::endpoint dest, Command command, char const* data, char size);
+	void dispatch(
+		boost::asio::ip::address senderAddress,
+		MulticastNetwork::Command command,
+		char *args,
+		char argsSize);
 
 	void on_candidate(uint32_t id);
 	void on_discoverGateway();
 
 	void on_electGateway();
-	GatewayElection m_election;
+	MulticastGateway* m_gateway;
+	GatewayElection* m_election;
 
 	void on_hello(std::string name, float sharedSize);
 	void on_message(std::string message);

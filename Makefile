@@ -251,7 +251,9 @@ LOBJ = \
 LOBJ = \
 	$(B)/library/network/main.o \
 	$(B)/library/network/IOHandler.o \
+	$(B)/library/network/MulticastNetwork.o \
 	$(B)/library/network/MulticastHandler.o \
+	$(B)/library/network/MulticastGateway.o \
 	$(B)/library/network/GatewayElection.o
 
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(LOBJ)
