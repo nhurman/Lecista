@@ -13,7 +13,8 @@ public:
 	IOHandler();
 	~IOHandler();
 
-	boost::asio::io_service& ioService() { return m_ioService; }
+	boost::asio::ip::udp::socket* createUdpSocket();
+	void createThread();
 
 private:
 	boost::asio::io_service m_ioService;

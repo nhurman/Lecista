@@ -26,6 +26,7 @@ public:
 	};
 
 	MulticastHandler(IOHandler& io);
+	~MulticastHandler();
 	void listen();
 	void send(boost::asio::ip::udp::endpoint dest, Command command, char* data, char size);
 	void on_newData(boost::system::error_code ec, size_t bytes);
@@ -40,7 +41,7 @@ public:
 
 private:
 	IOHandler& m_io;
-	boost::asio::ip::udp::socket m_socket;
+	boost::asio::ip::udp::socket* m_socket;
 	boost::asio::ip::udp::endpoint m_senderEndpoint;
 	boost::asio::ip::address m_senderAddress;
 	char m_buffer[256];

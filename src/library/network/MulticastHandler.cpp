@@ -9,21 +9,28 @@ unsigned short const MulticastHandler::MCAST_PORT = 50400;
 unsigned char const MulticastHandler::HEADER_SIZE =
 	sizeof(ip::address_v4::bytes_type) + sizeof(char);
 
-MulticastHandler::MulticastHandler(IOHandler& io) : m_io(io), m_socket(io.ioService())
+MulticastHandler::MulticastHandler(IOHandler& io) : m_io(io)
 {
+	m_socket = m_io.createUdpSocket();
+
 	// Set up multicast server
 	ip::address listenAddress = ip::address_v4(0);
 	ip::udp::endpoint listenEndpoint(listenAddress, MCAST_PORT);
-	m_socket.open(listenEndpoint.protocol());
-	m_socket.set_option(ip::udp::socket::reuse_address(true));
-	m_socket.bind(listenEndpoint);
+	m_socket->open(listenEndpoint.protocol());
+	m_socket->set_option(ip::udp::socket::reuse_address(true));
+	m_socket->bind(listenEndpoint);
 
 	// Join the multicast group
-	ip::address multicastAddress = MCAST_ADDR;
-	m_socket.set_option(ip::multicast::join_group(multicastAddress));
+	m_socket->set_option(ip::multicast::join_group(MCAST_ADDR));
 
 	// Listen for messages
 	listen();
+	m_io.createThread();
+}
+
+MulticastHandler::~MulticastHandler()
+{
+	delete m_socket;
 }
 
 void MulticastHandler::listen()
@@ -33,7 +40,7 @@ void MulticastHandler::listen()
 			&MulticastHandler::on_newData, this,
 			placeholders::error,
 			placeholders::bytes_transferred);
-	m_socket.async_receive_from(
+	m_socket->async_receive_from(
 		boost::asio::buffer(m_buffer, sizeof m_buffer),
 		m_senderEndpoint, readHandler);
 }
@@ -51,7 +58,7 @@ void MulticastHandler::send(ip::udp::endpoint dest, Command command, char* data,
 	std::memcpy(&packet[HEADER_SIZE + 1], data, size);
 
 	// Send
-	m_socket.async_send_to(boost::asio::buffer(packet, sizeof packet),
+	m_socket->async_send_to(boost::asio::buffer(packet, sizeof packet),
 		dest, &nullHandler);
 
 	std::cout << "I just sent a packet to " << dest.address().to_string()
@@ -68,7 +75,7 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 	}
 
 	// Parse header
-	uint32_t sourceIp = *reinterpret_cast<uint32_t*>(m_buffer);
+	uint32_t sourceIp = ntohl(*reinterpret_cast<uint32_t*>(m_buffer));
 	if (0 == sourceIp) {
 		m_senderAddress = m_senderEndpoint.address();
 	}
@@ -96,7 +103,7 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 
 	// Dispatch command to handler
 	if (Command::Candidate == command && sizeof(uint32_t) == argsSize) {
-		on_candidate(*reinterpret_cast<uint32_t*>(args));
+		on_candidate(ntohl(*reinterpret_cast<uint32_t*>(args)));
 	}
 	else if (Command::DiscoverGateway == command && 0 == argsSize) {
 		on_discoverGateway();
@@ -105,8 +112,9 @@ void MulticastHandler::on_newData(boost::system::error_code ec, size_t bytes)
 		on_electGateway();
 	}
 	else if (Command::Hello == command && sizeof(float) < argsSize) {
+		uint32_t b = ntohl(*reinterpret_cast<uint32_t*>(args + argsSize - sizeof(float)));
 		on_hello(std::string(args, argsSize - sizeof(float)),
-			*reinterpret_cast<float*>(args + argsSize - sizeof(float)));
+			*reinterpret_cast<float*>(&b));
 	}
 	else if (Command::Message == command && 0 < argsSize) {
 		on_message(std::string(args, argsSize));
