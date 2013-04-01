@@ -89,6 +89,10 @@ BASE_CXXFLAGS = -Wall -fno-strict-aliasing
 DO_CXXFLAGS = -std=c++0x
 OPTIMIZE = -O3
 
+ifeq ($(STATIC),1)
+	BASE_CXXFLAGS += -static
+endif
+
 #############################################################################
 # SETUP AND BUILD -- LINUX
 #############################################################################
@@ -165,7 +169,8 @@ LIBS += -lboost_system \
 	-lboost_chrono \
 	-lcrypto \
 	-lleveldb \
-	-lpthread
+	-lpthread \
+	-lrt
 
 #############################################################################
 # MAIN TARGETS
