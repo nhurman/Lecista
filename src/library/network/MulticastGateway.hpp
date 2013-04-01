@@ -18,7 +18,7 @@ public:
 	void initializeGateway();
 
 	void on_discoverGateway(boost::asio::ip::address const& sender);
-	void on_remoteGateway(boost::asio::ip::address const& sender, uint32_t id);
+	void on_remoteGateway(boost::asio::ip::address const& sender);
 
 private:
 	struct Network
@@ -39,7 +39,6 @@ private:
 
 	boost::asio::ip::address m_gatewayAddress;
 	bool m_iAmTheGateway;
-	uint32_t m_myId;
 };
 
 }

@@ -71,9 +71,6 @@ Lecista contains a list of hard-coded broadcast addresses.
 	G -> B "Gateway"
 	Z -> B "Gateway"
 
-The gateway must not reply to "RemoteGateway" commands until it has finished initializing itself.
-Therefore, B does not reply to its own "RemoteGateway" query.
-
 When a gateway receives the "RemoteGateway" command, it has to reply with its ip address:
 
 	B <- Z "RemoteGateway"
@@ -114,8 +111,10 @@ All commands are contained in a CommandContainer :
 - Candidate (uint randomId)
 - DiscoverGateway
 - ElectGateway
+- Gateway
 - Hello (string name, float sharedSize)
 - Message (string message)
+- RemoteGateway
 - SearchBlock (string rootHash, uint block_id)
 - SearchFile (string filename)
 

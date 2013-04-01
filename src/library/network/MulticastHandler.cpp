@@ -46,8 +46,8 @@ void MulticastHandler::dispatch(
 	else if (Command::Message == command && 0 < argsSize) {
 		on_message(std::string(args, argsSize));
 	}
-	else if (Command::RemoteGateway == command && sizeof(uint32_t) == argsSize) {
-		on_remoteGateway(ntohl(*reinterpret_cast<uint32_t*>(args)));
+	else if (Command::RemoteGateway == command && 0 == argsSize) {
+		on_remoteGateway();
 	}
 	else if (Command::SearchBlock == command && sizeof(uint32_t) < argsSize) {
 		on_searchBlock(std::string(args, argsSize - sizeof(uint32_t)),
@@ -88,10 +88,10 @@ void MulticastHandler::on_message(std::string message)
 	LOG_DEBUG("on_message(" << message << ") from " << m_senderAddress->to_string());
 }
 
-void MulticastHandler::on_remoteGateway(uint32_t id)
+void MulticastHandler::on_remoteGateway()
 {
 	LOG_DEBUG("on_remoteGateway() from " << m_senderAddress->to_string());
-	m_gateway->on_remoteGateway(*m_senderAddress, id);
+	m_gateway->on_remoteGateway(*m_senderAddress);
 }
 
 void MulticastHandler::on_searchBlock(std::string rootHash, uint32_t blockId)

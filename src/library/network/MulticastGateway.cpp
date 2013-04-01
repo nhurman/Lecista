@@ -8,7 +8,7 @@ MulticastGateway::MulticastGateway(MulticastNetwork* network) : m_networks(5)
 	m_iAmTheGateway = false;
 
 	m_networks[0].ip = 0x0a850800; m_networks[0].cidr = 24; // 10.133.8.0  Asso
-	m_networks[1].ip = 0x0a851000; m_networks[1].cidr = 21; // 10.133.16.0 Glénans
+	m_networks[1].ip = 0x0a851000; m_networks[1].cidr = 21; // 10.133.16.0 Glénan
 	m_networks[2].ip = 0x0a851800; m_networks[2].cidr = 23; // 10.133.24.0 Arz
 	m_networks[3].ip = 0x0a851a00; m_networks[3].cidr = 23; // 10.133.26.0 Bréhat
 	m_networks[4].ip = 0x0a851c00; m_networks[4].cidr = 23; // 10.133.28.0 Cézembre
@@ -48,16 +48,10 @@ void MulticastGateway::initializeGateway()
 	}
 
 	m_network->send(MulticastNetwork::Command::Gateway);
-	m_myId = m_network->ioHandler().randomUInt();
-	uint32_t random = htonl(m_myId);
-
 	for (auto i = m_networks.begin(); i != m_networks.end(); ++i) {
 		LOG_DEBUG("Sending remoteGateway to "
 			<< (i->broadcast.to_string()));
-		m_network->send(
-			i->broadcast,
-			MulticastNetwork::Command::RemoteGateway,
-			reinterpret_cast<char*>(&random), sizeof random);
+		m_network->send(i->broadcast, MulticastNetwork::Command::RemoteGateway);
 	}
 }
 
@@ -69,9 +63,9 @@ void MulticastGateway::on_discoverGateway(boost::asio::ip::address const& sender
 	}
 }
 
-void MulticastGateway::on_remoteGateway(boost::asio::ip::address const& sender, uint32_t id)
+void MulticastGateway::on_remoteGateway(boost::asio::ip::address const& sender)
 {
-	if (!m_iAmTheGateway || id == m_myId) {
+	if (!m_iAmTheGateway) {
 		return;
 	}
 
