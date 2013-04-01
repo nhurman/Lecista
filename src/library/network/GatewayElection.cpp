@@ -9,6 +9,10 @@ GatewayElection::GatewayElection(MulticastNetwork* network) : m_network(network)
 {
 	m_inProgress = false;
 	m_timer = m_network->ioHandler().createTimer();
+	m_randomGenerator.seed(time(0) + getpid() * 10000);
+	m_randomUInt = boost::random::uniform_int_distribution<uint32_t>(
+		std::numeric_limits<uint32_t>::min(),
+		std::numeric_limits<uint32_t>::max());
 }
 
 GatewayElection::~GatewayElection()
@@ -28,6 +32,8 @@ void GatewayElection::start()
 		&GatewayElection::timeOut, this,
 		boost::asio::placeholders::error));
 	m_inProgress = true;
+
+	apply();
 }
 
 void GatewayElection::registerCandidate(boost::asio::ip::address host, uint32_t id)
@@ -37,10 +43,10 @@ void GatewayElection::registerCandidate(boost::asio::ip::address host, uint32_t 
 			m_candidates[id] = host;
 		}
 		else { // Id collision
+			LOG_DEBUG("Id collision!");
 			if (m_candidates[id] != host) { // Not a duplicate packet
 				// Restart election
 				start();
-				std::terminate();
 			}
 		}
 	}
@@ -62,8 +68,6 @@ void GatewayElection::timeOut(boost::system::error_code ec)
 		return;
 	}
 
-	LOG_DEBUG("Gateway election finished");
-
 	int elected = 0;
 	int numCandidates = m_candidates.size();
 
@@ -78,9 +82,23 @@ void GatewayElection::timeOut(boost::system::error_code ec)
 			++i;
 		}
 
-		m_gateway = i->second;
-		LOG_DEBUG("New gateway: " << i->second.to_string());
+		m_notifier(i->second, i->first == m_myId);
+
+		if (i->first == m_myId) {
+			LOG_DEBUG("I'm the new gateway!");
+		}
+		else {
+			LOG_DEBUG("New gateway: " << i->second.to_string());
+		}
 	}
+}
+
+void GatewayElection::apply()
+{
+	m_myId = m_randomUInt(m_randomGenerator);
+	uint32_t id = htonl(m_myId);
+	m_network->send(MulticastNetwork::Command::Candidate, reinterpret_cast<char*>(&id), sizeof id);
+	registerCandidate(boost::asio::ip::address_v4(0), m_myId);
 }
 
 }

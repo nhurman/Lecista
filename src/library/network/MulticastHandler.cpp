@@ -66,6 +66,8 @@ void MulticastHandler::on_candidate(uint32_t id)
 void MulticastHandler::on_discoverGateway()
 {
 	LOG_DEBUG("on_discoverGateway() from " << m_senderAddress->to_string());
+
+	m_gateway->on_discoverGateway(*m_senderAddress);
 }
 
 void MulticastHandler::on_electGateway()

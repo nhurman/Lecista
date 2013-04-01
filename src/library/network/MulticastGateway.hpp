@@ -14,6 +14,8 @@ public:
 
 	void update(boost::asio::ip::address address, bool isThisMe);
 
+	void on_discoverGateway(boost::asio::ip::address senderAddress);
+
 private:
 	MulticastNetwork* m_network;
 

@@ -23,6 +23,7 @@ MulticastNetwork::MulticastNetwork(IOHandler& io, Dispatcher dispatch)
 
 	// Join the multicast group
 	m_socket->set_option(ip::multicast::join_group(MCAST_ADDR));
+	m_socket->set_option(ip::multicast::enable_loopback(false));
 
 	// Listen for messages
 	listen();
@@ -46,6 +47,16 @@ void MulticastNetwork::listen()
 		boost::asio::buffer(m_readBuffer, sizeof m_readBuffer);
 
 	m_socket->async_receive_from(b, m_senderEndpoint, readHandler);
+}
+
+void MulticastNetwork::send(Command command, char const* data, char size)
+{
+	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, data, size);
+}
+
+void MulticastNetwork::send(boost::asio::ip::address dest, Command command, char const* data, char size)
+{
+	send(ip::udp::endpoint(dest, MCAST_PORT), command, data, size);
 }
 
 void MulticastNetwork::send(ip::udp::endpoint dest, Command command, char const* data, char size)
@@ -80,7 +91,6 @@ void MulticastNetwork::on_read(boost::system::error_code ec, size_t bytes)
 
 		return;
 	}
-
 
 	if (bytes < HEADER_SIZE + 1) { // Incomplete packet, drop it
 		listen();
