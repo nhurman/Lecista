@@ -3,16 +3,12 @@
 namespace Lecista {
 
 boost::posix_time::time_duration const GatewayElection::ELECTION_DURATION
-	= boost::posix_time::milliseconds(5000);
+	= boost::posix_time::milliseconds(500);
 
 GatewayElection::GatewayElection(MulticastNetwork* network) : m_network(network)
 {
 	m_inProgress = false;
 	m_timer = m_network->ioHandler().createTimer();
-	m_randomGenerator.seed(time(0) + getpid() * 10000);
-	m_randomUInt = boost::random::uniform_int_distribution<uint32_t>(
-		std::numeric_limits<uint32_t>::min(),
-		std::numeric_limits<uint32_t>::max());
 }
 
 GatewayElection::~GatewayElection()
@@ -82,20 +78,20 @@ void GatewayElection::timeOut(boost::system::error_code ec)
 			++i;
 		}
 
-		m_notifier(i->second, i->first == m_myId);
-
 		if (i->first == m_myId) {
 			LOG_DEBUG("I'm the new gateway!");
 		}
 		else {
 			LOG_DEBUG("New gateway: " << i->second.to_string());
 		}
+
+		m_notifier(i->second, i->first == m_myId);
 	}
 }
 
 void GatewayElection::apply()
 {
-	m_myId = m_randomUInt(m_randomGenerator);
+	m_myId = m_network->ioHandler().randomUInt();
 	uint32_t id = htonl(m_myId);
 	m_network->send(MulticastNetwork::Command::Candidate, reinterpret_cast<char*>(&id), sizeof id);
 	registerCandidate(boost::asio::ip::address_v4(0), m_myId);

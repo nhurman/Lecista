@@ -5,6 +5,11 @@ namespace Lecista {
 IOHandler::IOHandler()
 {
 	m_thread = 0;
+
+	m_randomGenerator.seed(time(0) + getpid() * 10000);
+	m_randomUInt = boost::random::uniform_int_distribution<uint32_t>(
+		std::numeric_limits<uint32_t>::min(),
+		std::numeric_limits<uint32_t>::max());
 }
 
 IOHandler::~IOHandler()
@@ -41,6 +46,11 @@ void IOHandler::stop()
 		delete m_thread;
 		m_thread = 0;
 	}
+}
+
+uint32_t IOHandler::randomUInt()
+{
+	return m_randomUInt(m_randomGenerator);
 }
 
 }

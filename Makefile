@@ -87,6 +87,7 @@ endif
 
 BASE_CXXFLAGS = -Wall -fno-strict-aliasing
 DO_CXXFLAGS = -std=c++0x
+OPTIMIZE = -O3
 
 #############################################################################
 # SETUP AND BUILD -- LINUX
@@ -128,7 +129,6 @@ else # ifeq mingw32
 # SETUP AND BUILD -- GENERIC
 #############################################################################
 	BASE_CXXFLAGS=
-	OPTIMIZE = -O3
 
 	SHLIBEXT=so
 	SHLIBCXXFLAGS=-fPIC
@@ -175,12 +175,10 @@ default: release
 all: debug release
 
 debug:
-	@$(MAKE) targets B=$(BD) CXXFLAGS="$(CXXFLAGS) $(BASE_CXXFLAGS) $(DEBUG_CXXFLAGS)" \
-	OPTIMIZE="$(DEBUG_CXXFLAGS)"
+	@$(MAKE) targets B=$(BD) CXXFLAGS="$(CXXFLAGS) $(BASE_CXXFLAGS) $(DEBUG_CXXFLAGS)"
 
 release:
-	@$(MAKE) targets B=$(BR) CXXFLAGS="$(CXXFLAGS) $(BASE_CXXFLAGS)" \
-	OPTIMIZE="$(OPTIMIZE)"
+	@$(MAKE) targets B=$(BR) CXXFLAGS="$(CXXFLAGS) $(BASE_CXXFLAGS) $(OPTIMIZE)"
 
 # Create the build directories, check libraries and print out
 # an informational message, then start building
@@ -197,10 +195,6 @@ targets: makedirs
 	@echo ""
 	@echo " CXXFLAGS:"
 	-@for i in $(CXXFLAGS); \
-	do \
-	echo " $$i"; \
-	done
-	-@for i in $(OPTIMIZE); \
 	do \
 	echo " $$i"; \
 	done

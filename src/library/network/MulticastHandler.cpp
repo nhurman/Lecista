@@ -4,7 +4,8 @@ namespace Lecista {
 
 MulticastHandler::MulticastHandler(IOHandler& io)
 {
-	m_network = new MulticastNetwork(io, boost::bind(&MulticastHandler::dispatch, this, _1, _2, _3, _4));
+	m_network = new MulticastNetwork(io,
+		boost::bind(&MulticastHandler::dispatch, this, _1, _2, _3, _4));
 	m_gateway = new MulticastGateway(m_network);
 	m_election = new GatewayElection(m_network);
 
@@ -45,6 +46,9 @@ void MulticastHandler::dispatch(
 	else if (Command::Message == command && 0 < argsSize) {
 		on_message(std::string(args, argsSize));
 	}
+	else if (Command::RemoteGateway == command && sizeof(uint32_t) == argsSize) {
+		on_remoteGateway(ntohl(*reinterpret_cast<uint32_t*>(args)));
+	}
 	else if (Command::SearchBlock == command && sizeof(uint32_t) < argsSize) {
 		on_searchBlock(std::string(args, argsSize - sizeof(uint32_t)),
 			*reinterpret_cast<uint32_t*>(args + argsSize - sizeof(uint32_t)));
@@ -59,35 +63,35 @@ void MulticastHandler::dispatch(
 void MulticastHandler::on_candidate(uint32_t id)
 {
 	LOG_DEBUG("on_candidate(" << id << ") from " << m_senderAddress->to_string());
-
 	m_election->registerCandidate(*m_senderAddress, id);
 }
 
 void MulticastHandler::on_discoverGateway()
 {
 	LOG_DEBUG("on_discoverGateway() from " << m_senderAddress->to_string());
-
 	m_gateway->on_discoverGateway(*m_senderAddress);
 }
 
 void MulticastHandler::on_electGateway()
 {
 	LOG_DEBUG("on_electGateway() from " << m_senderAddress->to_string());
-
 	m_election->start();
 }
 
 void MulticastHandler::on_hello(std::string name, float sharedSize)
 {
 	LOG_DEBUG( "on_hello(" << name << ", " << sharedSize << ") from "	<< m_senderAddress->to_string());
-
-	//ip::udp::endpoint ep(m_senderAddress, MCAST_PORT + 1);
-	//send(ep, Command::DiscoverGateway, 0, 0);
 }
 
 void MulticastHandler::on_message(std::string message)
 {
 	LOG_DEBUG("on_message(" << message << ") from " << m_senderAddress->to_string());
+}
+
+void MulticastHandler::on_remoteGateway(uint32_t id)
+{
+	LOG_DEBUG("on_remoteGateway() from " << m_senderAddress->to_string());
+	m_gateway->on_remoteGateway(*m_senderAddress, id);
 }
 
 void MulticastHandler::on_searchBlock(std::string rootHash, uint32_t blockId)

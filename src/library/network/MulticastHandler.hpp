@@ -36,6 +36,7 @@ private:
 
 	void on_hello(std::string name, float sharedSize);
 	void on_message(std::string message);
+	void on_remoteGateway(uint32_t id);
 	void on_searchBlock(std::string rootHash, uint32_t blockId);
 	void on_searchFile(std::string filename);
 };

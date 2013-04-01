@@ -18,6 +18,7 @@ public:
 		Gateway,
 		Hello,
 		Message,
+		RemoteGateway,
 		SearchBlock,
 		SearchFile,
 
@@ -36,7 +37,9 @@ public:
 	IOHandler& ioHandler() { return m_io; }
 
 	void listen();
+	void send(Command command);
 	void send(Command command, char const* data, char size);
+	void send(boost::asio::ip::address dest, Command command);
 	void send(boost::asio::ip::address dest, Command command, char const* data, char size);
 	void send(boost::asio::ip::udp::endpoint dest, Command command, char const* data, char size);
 

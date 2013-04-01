@@ -5,7 +5,7 @@ using namespace boost::asio;
 namespace Lecista {
 
 ip::address const MulticastNetwork::MCAST_ADDR = ip::address::from_string("224.0.0.150");
-unsigned short const MulticastNetwork::MCAST_PORT = 50400;
+unsigned short const MulticastNetwork::MCAST_PORT = 49370;
 unsigned char const MulticastNetwork::HEADER_SIZE =
 	sizeof(ip::address_v4::bytes_type) + sizeof(char);
 
@@ -49,9 +49,19 @@ void MulticastNetwork::listen()
 	m_socket->async_receive_from(b, m_senderEndpoint, readHandler);
 }
 
+void MulticastNetwork::send(Command command)
+{
+	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, 0, 0);
+}
+
 void MulticastNetwork::send(Command command, char const* data, char size)
 {
 	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, data, size);
+}
+
+void MulticastNetwork::send(boost::asio::ip::address dest, Command command)
+{
+	send(ip::udp::endpoint(dest, MCAST_PORT), command, 0, 0);
 }
 
 void MulticastNetwork::send(boost::asio::ip::address dest, Command command, char const* data, char size)
@@ -131,7 +141,10 @@ void MulticastNetwork::on_read(boost::system::error_code ec, size_t bytes)
 	listen();
 }
 
-void MulticastNetwork::on_write(boost::system::error_code ec, size_t bytes, boost::shared_array<char> data)
+void MulticastNetwork::on_write(
+	boost::system::error_code ec,
+	size_t bytes,
+	boost::shared_array<char> data)
 {
 
 }
