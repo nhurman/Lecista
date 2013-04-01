@@ -13,13 +13,24 @@ namespace Lecista {
 class GatewayElection
 {
 public:
+	//! Function that gets called with the result of the election.
 	typedef boost::function<void(boost::asio::ip::address newGateway, bool isThisMe)> Notifier;
 
+	//!
+	/*!
+	  \param network
+	*/
 	GatewayElection(MulticastNetwork* network);
 	~GatewayElection();
 
+	//! Is there an election in progress ?
+	/*!
+	  \return True if an election is in progress
+	*/
 	bool inProgress() { return m_inProgress; }
 	void start();
+
+	//!
 	void registerCandidate(boost::asio::ip::address host, uint32_t id);
 	void setNotifier(Notifier notifier);
 

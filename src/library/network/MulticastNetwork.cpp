@@ -154,7 +154,7 @@ void MulticastNetwork::on_read(boost::system::error_code ec, size_t bytes)
 	char argsSize = bodyLength - 1;
 
 	// Dispatch command to handler
-	m_dispatch(senderAddress, command, args, argsSize);
+	m_dispatch(senderAddress, command, args, argsSize, true);
 
 	listen();
 }
@@ -165,6 +165,15 @@ void MulticastNetwork::on_write(
 	boost::shared_array<char> data)
 {
 
+}
+
+void MulticastNetwork::injectForwarded(
+	boost::asio::ip::address senderAddress,
+	MulticastNetwork::Command command,
+	char *args,
+	char argsSize)
+{
+	m_dispatch(senderAddress, command, args, argsSize, false);
 }
 
 }

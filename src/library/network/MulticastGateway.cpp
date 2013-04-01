@@ -87,6 +87,7 @@ void MulticastGateway::on_forward(
 	// Send it on our network
 	LOG_DEBUG("Forwarding to local network");
 	m_network->send(command, data, size, &sender);
+	m_network->injectForwarded(sender, command, data, size);
 }
 
 void MulticastGateway::on_remoteGateway(boost::asio::ip::address const& sender)
@@ -115,9 +116,18 @@ void MulticastGateway::forward(
 		return;
 	}
 
+	char forwardData[argsSize + 1];
+	std::memcpy(forwardData + 1, args, argsSize);
+	forwardData[0] = static_cast<int>(command);
+
 	for (auto i = m_gateways.begin(); i != m_gateways.end(); ++i) {
 		LOG_DEBUG("Forwarding to " << i->second.to_string());
-		m_network->send(i->second, MulticastNetwork::Command::Forward, args, argsSize, &sender);
+		m_network->send(
+			i->second,
+			MulticastNetwork::Command::Forward,
+			forwardData,
+			argsSize + 1,
+			&sender);
 	}
 }
 

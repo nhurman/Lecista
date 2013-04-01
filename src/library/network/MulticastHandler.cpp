@@ -5,7 +5,7 @@ namespace Lecista {
 MulticastHandler::MulticastHandler(IOHandler& io)
 {
 	m_network = new MulticastNetwork(io,
-		boost::bind(&MulticastHandler::dispatch, this, _1, _2, _3, _4));
+		boost::bind(&MulticastHandler::dispatch, this, _1, _2, _3, _4, _5));
 	m_gateway = new MulticastGateway(m_network);
 	m_election = new GatewayElection(m_network);
 
@@ -23,7 +23,8 @@ void MulticastHandler::dispatch(
 	boost::asio::ip::address senderAddress,
 	MulticastNetwork::Command command,
 	char *args,
-	char argsSize)
+	char argsSize,
+	bool forward)
 {
 	typedef MulticastNetwork::Command Command;
 
@@ -71,7 +72,7 @@ void MulticastHandler::dispatch(
 		on_searchFile(std::string(args, argsSize));
 	}
 
-	if (valid) {
+	if (valid && forward) {
 		m_gateway->forward(*m_senderAddress, command, args, argsSize);
 	}
 }
@@ -99,6 +100,7 @@ void MulticastHandler::on_electGateway()
 void MulticastHandler::on_forward(MulticastNetwork::Command command, char* args, char argsSize)
 {
 	LOG_DEBUG("on_forward() from " << m_senderAddress->to_string());
+	std::cout.write(args, argsSize);
 	m_gateway->on_forward(*m_senderAddress, command, args, argsSize);
 }
 

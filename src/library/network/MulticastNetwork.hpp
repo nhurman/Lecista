@@ -27,10 +27,11 @@ public:
 	};
 
 	typedef boost::function<void(
-		boost::asio::ip::address m_senderAddress,
+		boost::asio::ip::address senderAddress,
 		MulticastNetwork::Command command,
 		char *args,
-		char argsSize)> Dispatcher;
+		char argsSize,
+		bool forward)> Dispatcher;
 
 	MulticastNetwork(IOHandler& io, Dispatcher dispatch);
 	~MulticastNetwork();
@@ -55,6 +56,11 @@ public:
 		char const* data = 0,
 		char size = 0,
 		boost::asio::ip::address* sender = 0);
+	void injectForwarded(
+		boost::asio::ip::address senderAddress,
+		MulticastNetwork::Command command,
+		char *args,
+		char argsSize);
 
 private:
 	static boost::asio::ip::address const MCAST_ADDR;

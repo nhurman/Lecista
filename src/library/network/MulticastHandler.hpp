@@ -25,7 +25,8 @@ private:
 		boost::asio::ip::address senderAddress,
 		MulticastNetwork::Command command,
 		char *args,
-		char argsSize);
+		char argsSize,
+		bool forward);
 
 	MulticastGateway* m_gateway;
 	GatewayElection* m_election;
