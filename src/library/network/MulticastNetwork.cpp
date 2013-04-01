@@ -22,7 +22,15 @@ MulticastNetwork::MulticastNetwork(IOHandler& io, Dispatcher dispatch)
 	m_socket->bind(listenEndpoint);
 
 	// Join the multicast group
-	m_socket->set_option(ip::multicast::join_group(MCAST_ADDR));
+	try {
+		m_socket->set_option(ip::multicast::join_group(MCAST_ADDR));
+	}
+	catch (boost::system::system_error& e)
+	{
+		LOG_DEBUG("Cannot join the multicast group");
+		throw e;
+	}
+
 	m_socket->set_option(ip::multicast::enable_loopback(false));
 
 	// Listen for messages
@@ -49,32 +57,42 @@ void MulticastNetwork::listen()
 	m_socket->async_receive_from(b, m_senderEndpoint, readHandler);
 }
 
-void MulticastNetwork::send(Command command)
+void MulticastNetwork::send(
+	Command command,
+	char const* data,
+	char size,
+	boost::asio::ip::address* sender)
 {
-	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, 0, 0);
+	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, data, size, sender);
 }
 
-void MulticastNetwork::send(Command command, char const* data, char size)
+void MulticastNetwork::send(
+	boost::asio::ip::address dest,
+	Command command,
+	char const* data,
+	char size,
+	boost::asio::ip::address* sender)
 {
-	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, data, size);
+	send(ip::udp::endpoint(dest, MCAST_PORT), command, data, size, sender);
 }
 
-void MulticastNetwork::send(boost::asio::ip::address dest, Command command)
-{
-	send(ip::udp::endpoint(dest, MCAST_PORT), command, 0, 0);
-}
-
-void MulticastNetwork::send(boost::asio::ip::address dest, Command command, char const* data, char size)
-{
-	send(ip::udp::endpoint(dest, MCAST_PORT), command, data, size);
-}
-
-void MulticastNetwork::send(ip::udp::endpoint dest, Command command, char const* data, char size)
+void MulticastNetwork::send(
+	ip::udp::endpoint dest,
+	Command command,
+	char const* data,
+	char size,
+	boost::asio::ip::address* sender)
 {
 	boost::shared_array<char> packet(new char[HEADER_SIZE + 1 + size]);
 
 	// Build header, 0.0.0.0 ip means "Use the one you see the packet coming from
-	packet[0] = packet[1] = packet[2] = packet[3] = 0;
+	if (0 == sender) {
+		*reinterpret_cast<uint32_t*>(packet.get()) = 0;
+	}
+	else {
+		std::memcpy(packet.get(), sender->to_v4().to_bytes().begin(), 4);
+	}
+
 	packet[HEADER_SIZE - 1] = size + 1;
 
 	// Append command and arguments

@@ -15,9 +15,17 @@ public:
 	~MulticastGateway();
 
 	void update(boost::asio::ip::address address, bool isThisMe);
-	void initializeGateway();
+	void forward(
+		boost::asio::ip::address sender,
+		MulticastNetwork::Command command,
+		char* args, char argsSize);
 
 	void on_discoverGateway(boost::asio::ip::address const& sender);
+	void on_forward(
+		boost::asio::ip::address sender,
+		MulticastNetwork::Command command,
+		char* data,
+		char size);
 	void on_remoteGateway(boost::asio::ip::address const& sender);
 
 private:
@@ -36,9 +44,12 @@ private:
 	MulticastNetwork* m_network;
 	std::vector<Network> m_networks;
 	std::map<Network, boost::asio::ip::address> m_gateways;
+	std::set<MulticastNetwork::Command> m_forwardCommands;
 
 	boost::asio::ip::address m_gatewayAddress;
 	bool m_iAmTheGateway;
+
+	void initializeGateway();
 };
 
 }

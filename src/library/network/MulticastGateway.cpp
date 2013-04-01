@@ -24,6 +24,12 @@ MulticastGateway::MulticastGateway(MulticastNetwork* network) : m_networks(5)
 		broadcast -= 1;
 		m_networks[i].broadcast = boost::asio::ip::address_v4(broadcast);
 	}
+
+	// Commands that need to be forwarded
+	m_forwardCommands.insert(MulticastNetwork::Command::Hello);
+	m_forwardCommands.insert(MulticastNetwork::Command::Message);
+	m_forwardCommands.insert(MulticastNetwork::Command::SearchBlock);
+	m_forwardCommands.insert(MulticastNetwork::Command::SearchFile);
 }
 
 MulticastGateway::~MulticastGateway()
@@ -63,6 +69,26 @@ void MulticastGateway::on_discoverGateway(boost::asio::ip::address const& sender
 	}
 }
 
+void MulticastGateway::on_forward(
+	boost::asio::ip::address sender,
+	MulticastNetwork::Command command,
+	char* data,
+	char size)
+{
+	if (!m_iAmTheGateway) {
+		return;
+	}
+
+	// Check this command is forwardable
+	if (m_forwardCommands.find(command) == m_forwardCommands.end()) {
+		return;
+	}
+
+	// Send it on our network
+	LOG_DEBUG("Forwarding to local network");
+	m_network->send(command, data, size, &sender);
+}
+
 void MulticastGateway::on_remoteGateway(boost::asio::ip::address const& sender)
 {
 	if (!m_iAmTheGateway) {
@@ -76,6 +102,22 @@ void MulticastGateway::on_remoteGateway(boost::asio::ip::address const& sender)
 			m_gateways[*i] = sender;
 			break;
 		}
+	}
+}
+
+void MulticastGateway::forward(
+	boost::asio::ip::address sender,
+	MulticastNetwork::Command command,
+	char* args, char argsSize)
+{
+	if (!m_iAmTheGateway ||
+		m_forwardCommands.find(command) == m_forwardCommands.end()) {
+		return;
+	}
+
+	for (auto i = m_gateways.begin(); i != m_gateways.end(); ++i) {
+		LOG_DEBUG("Forwarding to " << i->second.to_string());
+		m_network->send(i->second, MulticastNetwork::Command::Forward, args, argsSize, &sender);
 	}
 }
 

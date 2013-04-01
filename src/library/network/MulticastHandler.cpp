@@ -28,33 +28,51 @@ void MulticastHandler::dispatch(
 	typedef MulticastNetwork::Command Command;
 
 	m_senderAddress = &senderAddress;
+	bool valid = false;
 
 	if (Command::Candidate == command && sizeof(uint32_t) == argsSize) {
+		valid = true;
 		on_candidate(ntohl(*reinterpret_cast<uint32_t*>(args)));
 	}
 	else if (Command::DiscoverGateway == command && 0 == argsSize) {
+		valid = true;
 		on_discoverGateway();
 	}
 	else if (Command::ElectGateway == command && 0 == argsSize) {
+		valid = true;
 		on_electGateway();
 	}
+	else if (Command::Forward == command && 0 < argsSize)
+	{
+		valid = true;
+		on_forward(static_cast<Command>(args[0]), args + 1, argsSize - 1);
+	}
 	else if (Command::Hello == command && sizeof(float) < argsSize) {
+		valid = true;
 		uint32_t b = ntohl(*reinterpret_cast<uint32_t*>(args + argsSize - sizeof(float)));
 		on_hello(std::string(args, argsSize - sizeof(float)),
 			*reinterpret_cast<float*>(&b));
 	}
 	else if (Command::Message == command && 0 < argsSize) {
+		valid = true;
 		on_message(std::string(args, argsSize));
 	}
 	else if (Command::RemoteGateway == command && 0 == argsSize) {
+		valid = true;
 		on_remoteGateway();
 	}
 	else if (Command::SearchBlock == command && sizeof(uint32_t) < argsSize) {
+		valid = true;
 		on_searchBlock(std::string(args, argsSize - sizeof(uint32_t)),
 			*reinterpret_cast<uint32_t*>(args + argsSize - sizeof(uint32_t)));
 	}
 	else if (Command::SearchFile == command && 0 < argsSize) {
+		valid = true;
 		on_searchFile(std::string(args, argsSize));
+	}
+
+	if (valid) {
+		m_gateway->forward(*m_senderAddress, command, args, argsSize);
 	}
 }
 
@@ -78,9 +96,15 @@ void MulticastHandler::on_electGateway()
 	m_election->start();
 }
 
+void MulticastHandler::on_forward(MulticastNetwork::Command command, char* args, char argsSize)
+{
+	LOG_DEBUG("on_forward() from " << m_senderAddress->to_string());
+	m_gateway->on_forward(*m_senderAddress, command, args, argsSize);
+}
+
 void MulticastHandler::on_hello(std::string name, float sharedSize)
 {
-	LOG_DEBUG( "on_hello(" << name << ", " << sharedSize << ") from "	<< m_senderAddress->to_string());
+	LOG_DEBUG("on_hello(" << name << ", " << sharedSize << ") from " << m_senderAddress->to_string());
 }
 
 void MulticastHandler::on_message(std::string message)

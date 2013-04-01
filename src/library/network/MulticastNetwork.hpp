@@ -15,6 +15,7 @@ public:
 		Candidate,
 		DiscoverGateway,
 		ElectGateway,
+		Forward,
 		Gateway,
 		Hello,
 		Message,
@@ -37,11 +38,23 @@ public:
 	IOHandler& ioHandler() { return m_io; }
 
 	void listen();
-	void send(Command command);
-	void send(Command command, char const* data, char size);
-	void send(boost::asio::ip::address dest, Command command);
-	void send(boost::asio::ip::address dest, Command command, char const* data, char size);
-	void send(boost::asio::ip::udp::endpoint dest, Command command, char const* data, char size);
+	void send(
+		Command command,
+		char const* data = 0,
+		char size = 0,
+		boost::asio::ip::address* sender = 0);
+	void send(
+		boost::asio::ip::address dest,
+		Command command,
+		char const* data = 0,
+		char size = 0,
+		boost::asio::ip::address* sender = 0);
+	void send(
+		boost::asio::ip::udp::endpoint dest,
+		Command command,
+		char const* data = 0,
+		char size = 0,
+		boost::asio::ip::address* sender = 0);
 
 private:
 	static boost::asio::ip::address const MCAST_ADDR;
@@ -57,9 +70,6 @@ private:
 	Dispatcher m_dispatch;
 	void on_read(boost::system::error_code ec, size_t bytes);
 	void on_write(boost::system::error_code ec, size_t bytes, boost::shared_array<char> data);
-
-
-
 };
 
 }
