@@ -24,8 +24,7 @@ Gateway election
 ----------------
 "Candidate random_number"
 
-Client A starts Lecista
-	A -> (mcast) "DiscoverGateway"
+Client A starts Lecista and waits for Gateway messages
 
 Option 1: A gets an answer, B is the gateway
 	A <- B "Gateway"
@@ -109,7 +108,6 @@ All commands are contained in a CommandContainer :
 	+----------------------------------------------------------------------------+
 
 - Candidate (uint randomId)
-- DiscoverGateway
 - ElectGateway
 - Gateway
 - Hello (string name, float sharedSize)

@@ -13,7 +13,6 @@ public:
 	enum class Command : unsigned char
 	{
 		Candidate,
-		DiscoverGateway,
 		ElectGateway,
 		Forward,
 		Gateway,

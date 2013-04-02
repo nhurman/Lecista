@@ -20,7 +20,7 @@ public:
 	/*!
 	  \param network
 	*/
-	GatewayElection(MulticastNetwork* network);
+	GatewayElection(MulticastNetwork* network, Notifier notifier);
 	~GatewayElection();
 
 	//! Is there an election in progress ?
@@ -28,11 +28,11 @@ public:
 	  \return True if an election is in progress
 	*/
 	bool inProgress() { return m_inProgress; }
+	void gatewayTimeout();
 	void start();
 
 	//!
 	void registerCandidate(boost::asio::ip::address host, uint32_t id);
-	void setNotifier(Notifier notifier);
 
 private:
 	static boost::posix_time::time_duration const ELECTION_DURATION;

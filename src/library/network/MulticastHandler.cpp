@@ -7,9 +7,11 @@ MulticastHandler::MulticastHandler(IOHandler& io)
 	m_network = new MulticastNetwork(io,
 		boost::bind(&MulticastHandler::dispatch, this, _1, _2, _3, _4, _5));
 	m_gateway = new MulticastGateway(m_network);
-	m_election = new GatewayElection(m_network);
+	m_election = new GatewayElection(
+		m_network,
+		boost::bind(&MulticastGateway::update, m_gateway, _1, _2));
 
-	m_election->setNotifier(boost::bind(&MulticastGateway::update, m_gateway, _1, _2));
+	m_gateway->onTimeout(boost::bind(&GatewayElection::gatewayTimeout, m_election));
 }
 
 MulticastHandler::~MulticastHandler()
@@ -35,10 +37,6 @@ void MulticastHandler::dispatch(
 		valid = true;
 		on_candidate(ntohl(*reinterpret_cast<uint32_t*>(args)));
 	}
-	else if (Command::DiscoverGateway == command && 0 == argsSize) {
-		valid = true;
-		on_discoverGateway();
-	}
 	else if (Command::ElectGateway == command && 0 == argsSize) {
 		valid = true;
 		on_electGateway();
@@ -47,6 +45,11 @@ void MulticastHandler::dispatch(
 	{
 		valid = true;
 		on_forward(static_cast<Command>(args[0]), args + 1, argsSize - 1);
+	}
+	else if (Command::Gateway == command && 0 == argsSize)
+	{
+		valid = true;
+		on_gateway();
 	}
 	else if (Command::Hello == command && sizeof(float) < argsSize) {
 		valid = true;
@@ -85,12 +88,6 @@ void MulticastHandler::on_candidate(uint32_t id)
 	m_election->registerCandidate(*m_senderAddress, id);
 }
 
-void MulticastHandler::on_discoverGateway()
-{
-	LOG_DEBUG("on_discoverGateway() from " << m_senderAddress->to_string());
-	m_gateway->on_discoverGateway(*m_senderAddress);
-}
-
 void MulticastHandler::on_electGateway()
 {
 	LOG_DEBUG("on_electGateway() from " << m_senderAddress->to_string());
@@ -100,8 +97,13 @@ void MulticastHandler::on_electGateway()
 void MulticastHandler::on_forward(MulticastNetwork::Command command, char* args, char argsSize)
 {
 	LOG_DEBUG("on_forward() from " << m_senderAddress->to_string());
-	std::cout.write(args, argsSize);
 	m_gateway->on_forward(*m_senderAddress, command, args, argsSize);
+}
+
+void MulticastHandler::on_gateway()
+{
+	//LOG_DEBUG("on_gateway() from " << m_senderAddress->to_string());
+	m_gateway->on_gateway(*m_senderAddress);
 }
 
 void MulticastHandler::on_hello(std::string name, float sharedSize)
@@ -116,7 +118,7 @@ void MulticastHandler::on_message(std::string message)
 
 void MulticastHandler::on_remoteGateway()
 {
-	LOG_DEBUG("on_remoteGateway() from " << m_senderAddress->to_string());
+	//LOG_DEBUG("on_remoteGateway() from " << m_senderAddress->to_string());
 	m_gateway->on_remoteGateway(*m_senderAddress);
 }
 

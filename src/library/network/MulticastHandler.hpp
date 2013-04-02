@@ -32,9 +32,9 @@ private:
 	GatewayElection* m_election;
 
 	void on_candidate(uint32_t id);
-	void on_discoverGateway();
 	void on_electGateway();
 	void on_forward(MulticastNetwork::Command command, char* args, char argsSize);
+	void on_gateway();
 	void on_hello(std::string name, float sharedSize);
 	void on_message(std::string message);
 	void on_remoteGateway();

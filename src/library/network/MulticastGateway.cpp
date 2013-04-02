@@ -2,6 +2,9 @@
 
 namespace Lecista {
 
+boost::posix_time::time_duration const MulticastGateway::PING_INTERVAL
+	= boost::posix_time::milliseconds(2000);
+
 MulticastGateway::MulticastGateway(MulticastNetwork* network) : m_networks(5)
 {
 	m_network = network;
@@ -30,11 +33,21 @@ MulticastGateway::MulticastGateway(MulticastNetwork* network) : m_networks(5)
 	m_forwardCommands.insert(MulticastNetwork::Command::Message);
 	m_forwardCommands.insert(MulticastNetwork::Command::SearchBlock);
 	m_forwardCommands.insert(MulticastNetwork::Command::SearchFile);
+
+	// Alive ping
+	m_timer = m_network->ioHandler().createTimer();
+	pingTimer(boost::system::error_code());
 }
 
 MulticastGateway::~MulticastGateway()
 {
+	m_timer->cancel();
+	delete m_timer;
+}
 
+void MulticastGateway::onTimeout(boost::function<void()> callback)
+{
+	m_onTimeout = callback;
 }
 
 void MulticastGateway::update(boost::asio::ip::address address, bool isThisMe)
@@ -53,20 +66,32 @@ void MulticastGateway::initializeGateway()
 		return;
 	}
 
-	m_network->send(MulticastNetwork::Command::Gateway);
 	for (auto i = m_networks.begin(); i != m_networks.end(); ++i) {
-		LOG_DEBUG("Sending remoteGateway to "
-			<< (i->broadcast.to_string()));
 		m_network->send(i->broadcast, MulticastNetwork::Command::RemoteGateway);
 	}
 }
 
-void MulticastGateway::on_discoverGateway(boost::asio::ip::address const& sender)
+void MulticastGateway::pingTimer(boost::system::error_code ec)
 {
-	if (m_iAmTheGateway) {
-		LOG_DEBUG("Answering DiscoverGateway from " << sender.to_string());
-		m_network->send(sender, MulticastNetwork::Command::Gateway);
+	if (ec) {
+		return;
 	}
+
+	if (m_iAmTheGateway) {
+		m_network->send(MulticastNetwork::Command::Gateway);
+	}
+	else {
+		m_missedPings++;
+
+		if (m_missedPings > 2) {
+			m_onTimeout();
+		}
+	}
+
+	m_timer->expires_from_now(PING_INTERVAL);
+	m_timer->async_wait(boost::bind(
+		&MulticastGateway::pingTimer, this,
+		boost::asio::placeholders::error));
 }
 
 void MulticastGateway::on_forward(
@@ -85,9 +110,13 @@ void MulticastGateway::on_forward(
 	}
 
 	// Send it on our network
-	LOG_DEBUG("Forwarding to local network");
 	m_network->send(command, data, size, &sender);
 	m_network->injectForwarded(sender, command, data, size);
+}
+
+void MulticastGateway::on_gateway(boost::asio::ip::address const& sender)
+{
+	m_missedPings = 0;
 }
 
 void MulticastGateway::on_remoteGateway(boost::asio::ip::address const& sender)

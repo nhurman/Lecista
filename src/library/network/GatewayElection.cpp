@@ -5,7 +5,8 @@ namespace Lecista {
 boost::posix_time::time_duration const GatewayElection::ELECTION_DURATION
 	= boost::posix_time::milliseconds(500);
 
-GatewayElection::GatewayElection(MulticastNetwork* network) : m_network(network)
+GatewayElection::GatewayElection(MulticastNetwork* network, Notifier notifier)
+: m_network(network), m_notifier(notifier)
 {
 	m_inProgress = false;
 	m_timer = m_network->ioHandler().createTimer();
@@ -14,6 +15,15 @@ GatewayElection::GatewayElection(MulticastNetwork* network) : m_network(network)
 GatewayElection::~GatewayElection()
 {
 	delete m_timer;
+}
+
+void GatewayElection::gatewayTimeout()
+{
+	LOG_DEBUG("Gateway timed out");
+	if (!m_inProgress) {
+		m_network->send(MulticastNetwork::Command::ElectGateway);
+		start();
+	}
 }
 
 void GatewayElection::start()
@@ -46,11 +56,6 @@ void GatewayElection::registerCandidate(boost::asio::ip::address host, uint32_t 
 			}
 		}
 	}
-}
-
-void GatewayElection::setNotifier(Notifier notifier)
-{
-	m_notifier = notifier;
 }
 
 void GatewayElection::timeOut(boost::system::error_code ec)

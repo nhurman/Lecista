@@ -43,6 +43,7 @@ void IOHandler::stop()
 		if (!m_thread->try_join_for(boost::chrono::milliseconds(500))) {
 			m_thread->interrupt();
 		}
+
 		delete m_thread;
 		m_thread = 0;
 	}
