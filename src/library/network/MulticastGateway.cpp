@@ -35,6 +35,7 @@ MulticastGateway::MulticastGateway(MulticastNetwork* network) : m_networks(5)
 	m_forwardCommands.insert(MulticastNetwork::Command::SearchFile);
 
 	// Alive ping
+	m_onTimeout = 0;
 	m_timer = m_network->ioHandler().createTimer();
 	pingTimer(boost::system::error_code());
 }
@@ -83,7 +84,7 @@ void MulticastGateway::pingTimer(boost::system::error_code ec)
 	else {
 		m_missedPings++;
 
-		if (m_missedPings > 2) {
+		if (m_missedPings > 2 && 0 != m_onTimeout) {
 			m_onTimeout();
 		}
 	}

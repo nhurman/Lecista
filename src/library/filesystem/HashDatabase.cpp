@@ -8,6 +8,12 @@ HashDatabase::HashDatabase(std::string const& database)
 	options.create_if_missing = true;
 	leveldb::Status status = leveldb::DB::Open(options, database, &m_db);
 	assert(status.ok());
+
+	// Initialize database
+	std::string empty;
+	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::Hash)), empty);
+	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::Filename)), empty);
+	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::End)), empty);
 }
 
 HashDatabase::~HashDatabase()
@@ -17,11 +23,20 @@ HashDatabase::~HashDatabase()
 
 void HashDatabase::addFile(std::string const& filename)
 {
-	char *out = 0;
-	unsigned int size = serialize(filename, out);
+	char *out = 0, rootHash[Hash::SIZE];
+	unsigned int size = serialize(filename, out, rootHash);
+	std::string hash(rootHash, sizeof rootHash);
 
 	leveldb::Slice value(out, size);
-	leveldb::Status s = m_db->Put(leveldb::WriteOptions(), filename, value);
+	std::string hashkey = static_cast<char>(Key::Hash) + hash;
+	std::string namekey = static_cast<char>(Key::Filename) + filename;
+
+	// Write data
+	leveldb::Status s = m_db->Put(leveldb::WriteOptions(), hashkey, value);
+	assert(s.ok());
+
+	// Write index
+	s = m_db->Put(leveldb::WriteOptions(), namekey, hash);
 	assert(s.ok());
 
 	delete[] out;
@@ -29,12 +44,15 @@ void HashDatabase::addFile(std::string const& filename)
 
 HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
 {
-	std::string data;
-	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), filename, &data);
+	std::string data, key = static_cast<char>(Key::Filename) + filename;
+	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &data);
+	assert(s.ok());
+
+	key = static_cast<char>(Key::Hash) + data;
+	s = m_db->Get(leveldb::ReadOptions(), key, &data);
 	assert(s.ok());
 
 	HashDatabase::File::SharedPtr file = unserialize(data.c_str(), data.length());
-	file->m_filename = filename;
 	return file;
 }
 
@@ -45,19 +63,24 @@ bool HashDatabase::exists(std::string const& filename)
 	return s.ok();
 }
 
-unsigned int HashDatabase::serialize(std::string const& filename, char*& out) const
+unsigned int HashDatabase::serialize(std::string const& filename, char*& out, char* rootHash) const
 {
 	time_t lastWrite = boost::filesystem::last_write_time(filename);
 	HashTree tree(filename);
+	if (rootHash) {
+		std::memcpy(rootHash, tree.rootHash()->data(), Hash::SIZE);
+	}
 
+	unsigned int s_filename = filename.length() + 1;
 	unsigned int s_lastWrite = sizeof lastWrite;
 	unsigned int s_tree = tree.getSerializedSize();
-	unsigned int size = s_lastWrite + s_tree;
+	unsigned int size = s_filename + s_lastWrite + s_tree;
 
 	out = new char[size];
-	std::memcpy(out, &lastWrite, s_lastWrite);
+	std::memcpy(out, filename.c_str(), s_filename);
+	std::memcpy(out + s_filename, &lastWrite, s_lastWrite);
 
-	char *treeBeginning = out + s_lastWrite;
+	char *treeBeginning = out + s_filename + s_lastWrite;
 	tree.serialize(treeBeginning);
 
 	return size;
@@ -67,10 +90,21 @@ HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsign
 {
 	File::SharedPtr file(new File(new HashTree()));
 	unsigned int s_lastWrite = sizeof(file->m_lastWrite);
+	unsigned int s_filename;
 
-	memcpy(&(file->m_lastWrite), data, s_lastWrite);
+	for (s_filename = 0; s_filename < size - s_lastWrite - Hash::SIZE; ++s_filename) {
+		if (data[s_filename] == '\0') {
+			break;
+		}
+	}
+
+	++s_filename;
+	assert(s_filename < size - s_lastWrite - Hash::SIZE);
+	file->m_filename = data;
+
+	memcpy(&(file->m_lastWrite), data + s_filename, s_lastWrite);
 	if (tree) {
-		file->m_tree->unserialize(data + s_lastWrite, size - s_lastWrite);
+		file->m_tree->unserialize(data + s_filename + s_lastWrite, size - s_lastWrite - s_filename);
 	}
 
 	return file;
@@ -79,6 +113,18 @@ HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsign
 HashDatabase::File::SharedPtr HashDatabase::unserialize(leveldb::Slice const& slice, bool tree)
 {
 	return unserialize(slice.data(), slice.size(), tree);
+}
+
+void HashDatabase::delFile(std::string const& filename)
+{
+	std::string hash, key = static_cast<char>(Key::Filename) + filename;
+
+	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &hash);
+	assert(s.ok());
+	m_db->Delete(leveldb::WriteOptions(), key);
+
+	key = static_cast<char>(Key::Hash) + hash;
+	m_db->Delete(leveldb::WriteOptions(), key);
 }
 
 void HashDatabase::delDirectory(std::string path)
@@ -92,20 +138,25 @@ void HashDatabase::delDirectory(std::string path)
 		path += preferredSlash[0];
 
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
-	for (it->SeekToFirst(); it->Valid(); it->Next()) {
+	std::string begin(1, static_cast<char>(Key::Filename)),
+		end(1, static_cast<char>(Key::End));
+
+	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		char const* key = it->key().data();
 		bool found = true;
-		for (int i = 0; i < path.length() && i < it->key().size(); ++i) {
-			if (path[i] != key[i]) {
+		for (int i = 0; i < path.length() && i < it->key().size() - 1; ++i) {
+			if (path[i] != key[i + 1]) {
 				found = false;
 				break;
 			}
 		}
 
-		if (found && it->key().size() >= path.length()) {
-			m_db->Delete(leveldb::WriteOptions(), it->key());
+		if (found && (it->key().size() - 1) >= path.length()) {
+			delFile(std::string(it->key().ToString().c_str() + 1, it->key().size() - 1));
 		}
 	}
+
+	delete it;
 }
 
 void HashDatabase::rehash()
@@ -113,22 +164,25 @@ void HashDatabase::rehash()
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
 	time_t lastWrite;
 
-	for (it->SeekToFirst(); it->Valid(); it->Next()) {
+	std::string begin(1, static_cast<char>(Key::Hash)),
+		end(1, static_cast<char>(Key::Filename));
+
+	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		HashDatabase::File::SharedPtr file = unserialize(it->value(), false);
-		std::string filename = it->key().ToString();
-
 		try {
-			lastWrite = boost::filesystem::last_write_time(filename);
+			lastWrite = boost::filesystem::last_write_time(file->m_filename);
 
-			if (lastWrite != file->lastWrite()) {
+			if (lastWrite != file->m_lastWrite) {
 				// Update hash
-				addFile(filename);
+				addFile(file->m_filename);
 			}
 		} catch (boost::filesystem::filesystem_error& e) {
 			// File no longer exists, remove it from the index
-			m_db->Delete(leveldb::WriteOptions(), it->key());
+			delFile(file->m_filename);
 		}
 	}
+
+	delete it;
 }
 
 void HashDatabase::list()
@@ -141,6 +195,28 @@ void HashDatabase::list()
 
 	assert(it->status().ok());
 	delete it;
+}
+
+boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> HashDatabase::search(std::string name)
+{
+	boost::shared_ptr<std::deque<File::SharedPtr>> matches(new std::deque<HashDatabase::File::SharedPtr>());
+	auto it = m_db->NewIterator(leveldb::ReadOptions());
+
+	boost::to_lower(name);
+	std::string begin(1, static_cast<char>(Key::Filename)),
+		end(1, static_cast<char>(Key::End));
+
+	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
+		if (std::string::npos != boost::to_lower_copy(it->key().ToString()).find(name)) {
+			File::SharedPtr match = getFile(std::string(it->key().ToString().c_str() + 1, it->key().size() - 1));
+			matches->push_back(match);
+		}
+	}
+
+	assert(it->status().ok());
+	delete it;
+
+	return matches;
 }
 
 }

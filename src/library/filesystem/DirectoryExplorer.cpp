@@ -42,7 +42,9 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 	try {
 		rootpath = fs::canonical(rootpath).string();
 		openList.push_back(rootpath);
-	} catch (fs::filesystem_error& e) {}
+	} catch (fs::filesystem_error& e) {
+		return dir;
+	}
 
 	boost::filesystem::path slash("/");
 	std::string preferredSlash = slash.make_preferred().native();
@@ -50,19 +52,19 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 	if (rootpath[rootpath.length() - 1] != preferredSlash[0])
 		rootpath += preferredSlash[0];
 
-	dir.name = rootpath;
+	dir.path = rootpath;
 
 	if (!rescan) { // Check if this directory is already shared
 		for (auto e: m_config.shares()) {
 			bool found = true;
-			for (int i = 0; i < rootpath.length() && i < e.second.name.length(); ++i) {
-				if (rootpath[i] != e.second.name[i]) {
+			for (int i = 0; i < rootpath.length() && i < e.second.path.length(); ++i) {
+				if (rootpath[i] != e.second.path[i]) {
 					found = false;
 					break;
 				}
 			}
 
-			if (found && rootpath.length() >= e.second.name.length()) {
+			if (found && rootpath.length() >= e.second.path.length()) {
 				// Only perform a scan of added/removed files and update index
 				rescan = true;
 			}
@@ -108,15 +110,15 @@ void DirectoryExplorer::delDirectory(string rootpath)
 
 	for (auto const& e: m_config.shares()) {
 		bool found = true;
-		for (int i = 0; i < rootpath.length() && i < e.second.name.length(); ++i) {
-			if (rootpath[i] != e.second.name[i]) {
+		for (int i = 0; i < rootpath.length() && i < e.second.path.length(); ++i) {
+			if (rootpath[i] != e.second.path[i]) {
 				found = false;
 				break;
 			}
 		}
 
-		if (found && rootpath.length() <= e.second.name.length()) {
-			toDelete.push_back(e.second.name) ;
+		if (found && rootpath.length() <= e.second.path.length()) {
+			toDelete.push_back(e.second.path) ;
 		}
 	}
 
@@ -131,8 +133,8 @@ map<string, Config::Directory> const& DirectoryExplorer::listDirectories() const
 	map<string, Config::Directory> const& shares = m_config.shares();
 
 	for (auto const& e: shares) {
-		std::cout << e.second.name << "(" << e.second.files << " files, "
-			<< formatSize(e.second.size) << ")" << std::endl;
+		LOG_DEBUG(e.second.path << " (" << e.second.files << " files, "
+			<< formatSize(e.second.size) << ")");
 	}
 
 	return shares;
@@ -141,7 +143,7 @@ map<string, Config::Directory> const& DirectoryExplorer::listDirectories() const
 void DirectoryExplorer::rescan()
 {
 	for (auto const& e: m_config.shares()) {
-		addDirectory(e.second.name, true);
+		addDirectory(e.second.path, true);
 	}
 }
 

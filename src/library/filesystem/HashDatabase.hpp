@@ -2,9 +2,13 @@
 
 #include <string>
 #include <sstream>
+#include <deque>
+#include <boost/shared_ptr.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <leveldb/db.h>
 #include "HashTree.hpp"
+#include "../Logger.hpp"
 
 namespace Lecista {
 
@@ -65,6 +69,12 @@ public:
 	*/
 	bool exists(std::string const& filename);
 
+	//! Remove a file from the database
+	/*!
+	  \param fimename
+	*/
+	void delFile(std::string const& filename);
+
 	//! Remove files belonging to a directory from the index.
 	/*!
 	  \param path Directory path
@@ -74,14 +84,28 @@ public:
 	//! Check if the index is in sync with the filesystem. Re-hash modified files and remove deleted files.
 	void rehash();
 
+	//! Search for a file in the database
+	/*!
+	  \param name String to look for in file names
+	  \return List of mathing file names
+	*/
+	boost::shared_ptr<std::deque<File::SharedPtr>> search(std::string name);
+
 	//! Dump the index
 	//! \todo Remove this
 	void list();
 
 private:
+	enum class Key: unsigned char
+	{
+		Hash,
+		Filename,
+		End
+	};
+
 	leveldb::DB *m_db;
 
-	unsigned int serialize(std::string const& filename, char*& out) const;
+	unsigned int serialize(std::string const& filename, char*& out, char* rootHash = 0) const;
 	File::SharedPtr unserialize(char const* data, unsigned int size, bool tree = true);
 	File::SharedPtr unserialize(leveldb::Slice const& slice, bool tree = true);
 };

@@ -19,12 +19,12 @@ std::map<std::string, Config::Directory> const& Config::shares() const
 
 void Config::addShare(Config::Directory const& dir)
 {
-	m_shares[dir.name] = dir;
+	m_shares[dir.path] = dir;
 }
 
-void Config::delShare(std::string const& name)
+void Config::delShare(std::string const& path)
 {
-	m_shares.erase(name);
+	m_shares.erase(path);
 }
 
 void Config::load()
@@ -36,8 +36,8 @@ void Config::load()
 	try {
 		for (ptree::value_type &v: m_ptree.get_child("config.shares")) {
 			if (boost::algorithm::starts_with(v.first, "directory")) {
-				std::string key = boost::filesystem::canonical(v.second.data()).filename().string();
-				m_shares[key].name = v.second.data();
+				std::string key = v.second.data();
+				m_shares[key].path = v.second.data();
 				m_shares[key].files
 					= boost::lexical_cast<unsigned int>(v.second.get_child("<xmlattr>.files").data());
 				m_shares[key].size
@@ -58,7 +58,7 @@ void Config::save()
 	for (auto const& e: m_shares) {
 		std::ostringstream ss;
 		ss << "config.shares.directory" << i;
-		ptree& node = m_ptree.put(ss.str(), e.second.name);
+		ptree& node = m_ptree.put(ss.str(), e.second.path);
 		node.put("<xmlattr>.files", e.second.files);
 		node.put("<xmlattr>.size", e.second.size);
 		++i;

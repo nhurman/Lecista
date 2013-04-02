@@ -9,8 +9,8 @@
 
 #define LOG_DEBUG(x) LOG("Debug ", x)
 #ifdef DEBUG
-	#define FILE (std::strrchr(__FILE__, '/') ? std::strrchr(__FILE__, '/') + 1 : __FILE__)
-	#define LOG(level, msg) Logger::get(level) << FILE << ":" << __LINE__ << "] " << msg << std::endl
+	#define __TFILE__ (std::strrchr(__FILE__, '/') ? std::strrchr(__FILE__, '/') + 1 : __FILE__)
+	#define LOG(level, msg) Logger::get(level) << __TFILE__ << ":" << __LINE__ << "] " << msg << std::endl
 #else
 	#define LOG(level, msg)
 #endif

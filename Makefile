@@ -85,7 +85,7 @@ ifneq ($(GIT_REV),)
 endif
 endif
 
-BASE_CXXFLAGS = -Wall -fno-strict-aliasing
+BASE_CXXFLAGS = -Wall -Wno-sign-compare -fno-strict-aliasing
 DO_CXXFLAGS = -std=c++0x
 OPTIMIZE = -O3
 
@@ -238,17 +238,17 @@ makedirs:
 # LIBRARY
 #############################################################################
 
-LOBJ = \
+LOBJ = $(B)/library/main.o
+
+LOBJ += \
 	$(B)/library/filesystem/Config.o \
 	$(B)/library/filesystem/DirectoryExplorer.o \
 	$(B)/library/filesystem/Hash.o \
 	$(B)/library/filesystem/Hasher.o \
 	$(B)/library/filesystem/HashDatabase.o \
 	$(B)/library/filesystem/HashTree.o
-	#$(B)/library/filesystem/main.o
 
-LOBJ = \
-	$(B)/library/network/main.o \
+LOBJ += \
 	$(B)/library/network/IOHandler.o \
 	$(B)/library/network/MulticastNetwork.o \
 	$(B)/library/network/MulticastHandler.o \

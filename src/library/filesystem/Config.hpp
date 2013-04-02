@@ -8,6 +8,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
+#include "../Logger.hpp"
 
 namespace Lecista {
 
@@ -24,7 +25,7 @@ public:
 	{
 		Directory() : size(0), files(0) {}
 
-		std::string name;
+		std::string path;
 		float size;
 		unsigned int files;
 	};
@@ -74,10 +75,10 @@ public:
 
 	//! Remove a shared directory from the configuration.
 	/*! This method does not remove the directory content from the index.
-	  \param name Directory path (name attribute of the Directory structure)
+	  \param path Directory path (path attribute of the Directory structure)
 	  \sa DirectoryExplorer::delDirectory
 	*/
-	void delShare(std::string const& name);
+	void delShare(std::string const& path);
 
 private:
 	std::string m_filename; /*!< XML file used to save and load the configuration */

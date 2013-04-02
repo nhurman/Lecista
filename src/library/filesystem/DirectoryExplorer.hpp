@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <leveldb/db.h>
 #include <boost/filesystem.hpp>
-
+#include "../Logger.hpp"
 #include "Config.hpp"
 #include "HashDatabase.hpp"
 
