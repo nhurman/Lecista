@@ -15,9 +15,9 @@ int main()
 	DirectoryExplorer explorer(db, config);
 
 	IOHandler io;
-	//MulticastHandler mcast(io);
+	MulticastHandler mcast(io, db);
 
-	explorer.addDirectory("/tmp/structure");
+	explorer.addDirectory("../src");
 	explorer.listDirectories();
 
 

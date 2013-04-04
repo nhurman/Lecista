@@ -2,7 +2,7 @@
 
 namespace Lecista {
 
-MulticastHandler::MulticastHandler(IOHandler& io)
+MulticastHandler::MulticastHandler(IOHandler& io, HashDatabase& db) : m_db(db)
 {
 	m_network = new MulticastNetwork(io,
 		boost::bind(&MulticastHandler::dispatch, this, _1, _2, _3, _4, _5));
@@ -70,9 +70,9 @@ void MulticastHandler::dispatch(
 		on_searchBlock(std::string(args, argsSize - sizeof(uint32_t)),
 			*reinterpret_cast<uint32_t*>(args + argsSize - sizeof(uint32_t)));
 	}
-	else if (Command::SearchFile == command && 0 < argsSize) {
+	else if (Command::SearchFileName == command && 0 < argsSize) {
 		valid = true;
-		on_searchFile(std::string(args, argsSize));
+		on_searchFileName(std::string(args, argsSize));
 	}
 
 	if (valid && forward) {
@@ -127,9 +127,35 @@ void MulticastHandler::on_searchBlock(std::string rootHash, uint32_t blockId)
 	LOG_DEBUG("on_searchBLock(" << rootHash << ", " << blockId << ") from " << m_senderAddress->to_string());
 }
 
-void MulticastHandler::on_searchFile(std::string filename)
+void MulticastHandler::on_searchFileName(std::string filename)
 {
-	LOG_DEBUG("on_searchFile(" << filename << ") from " << m_senderAddress->to_string());
+	LOG_DEBUG("on_searchFileName(" << filename << ") from " << m_senderAddress->to_string());
+
+	boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> m = m_db.search(filename);
+	std::string answer;
+	int length = 0;
+	for (auto i = m->begin(); i != m->end(); ++i) {
+		std::string match = boost::filesystem::path((*i)->filename()).filename().string();
+		length += match.length();
+		if (length > 200) {
+			break;
+		}
+
+		matches.push_back(match);
+	}
+
+	int length = 0;
+	std::string answer;
+	for (auto i = matches.begin(); i != matches.end(); ++i) {
+		length += i->length();
+		if (length > 200) {
+			break;
+		}
+
+		answer += *i + '\0';
+	}
+
+	LOG_DEBUG(answer);
 }
 
 }

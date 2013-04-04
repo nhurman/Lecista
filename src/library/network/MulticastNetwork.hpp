@@ -20,7 +20,8 @@ public:
 		Message,
 		RemoteGateway,
 		SearchBlock,
-		SearchFile,
+		SearchFileHash,
+		SearchFileName,
 
 		NUM_COMMANDS
 	};

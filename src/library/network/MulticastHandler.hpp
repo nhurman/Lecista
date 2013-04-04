@@ -8,17 +8,19 @@
 #include "MulticastNetwork.hpp"
 #include "MulticastGateway.hpp"
 #include "GatewayElection.hpp"
+#include "../filesystem/HashDatabase.hpp"
 
 namespace Lecista {
 
 class MulticastHandler
 {
 public:
-	MulticastHandler(IOHandler& io);
+	MulticastHandler(IOHandler& io, HashDatabase& db);
 	~MulticastHandler();
 
 private:
 	MulticastNetwork* m_network;
+	HashDatabase& m_db;
 	boost::asio::ip::address* m_senderAddress;
 
 	void dispatch(
@@ -39,7 +41,7 @@ private:
 	void on_message(std::string message);
 	void on_remoteGateway();
 	void on_searchBlock(std::string rootHash, uint32_t blockId);
-	void on_searchFile(std::string filename);
+	void on_searchFileName(std::string filename);
 };
 
 }
