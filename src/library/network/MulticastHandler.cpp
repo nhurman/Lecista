@@ -25,7 +25,7 @@ void MulticastHandler::dispatch(
 	boost::asio::ip::address senderAddress,
 	MulticastNetwork::Command command,
 	char *args,
-	char argsSize,
+	unsigned char argsSize,
 	bool forward)
 {
 	typedef MulticastNetwork::Command Command;
@@ -74,6 +74,33 @@ void MulticastHandler::dispatch(
 		valid = true;
 		on_searchFileName(std::string(args, argsSize));
 	}
+	else if (Command::SearchFileNameReply == command && 0 < argsSize) {
+		valid = true;
+		std::map<std::string, std::string> results;
+
+		int index = 0;
+		while (index < argsSize) {
+			int stringLength = 0;
+			for (int i = index + Hash::SIZE; i < argsSize; i++) {
+				if (args[i] == '\0') {
+					break;
+				}
+
+				++stringLength;
+			}
+
+			if (stringLength + Hash::SIZE + index >= argsSize) {
+				break;
+			}
+
+			std::string hash(args + index, Hash::SIZE);
+			std::string filename(args + index + Hash::SIZE, stringLength);
+			results[filename] = hash;
+			index += Hash::SIZE + stringLength + 1;
+		}
+
+		on_searchFileNameReply(results);
+	}
 
 	if (valid && forward) {
 		m_gateway->forward(*m_senderAddress, command, args, argsSize);
@@ -94,7 +121,7 @@ void MulticastHandler::on_electGateway()
 	m_election->start();
 }
 
-void MulticastHandler::on_forward(MulticastNetwork::Command command, char* args, char argsSize)
+void MulticastHandler::on_forward(MulticastNetwork::Command command, char* args, unsigned char argsSize)
 {
 	LOG_DEBUG("on_forward() from " << m_senderAddress->to_string());
 	m_gateway->on_forward(*m_senderAddress, command, args, argsSize);
@@ -124,7 +151,7 @@ void MulticastHandler::on_remoteGateway()
 
 void MulticastHandler::on_searchBlock(std::string rootHash, uint32_t blockId)
 {
-	LOG_DEBUG("on_searchBLock(" << rootHash << ", " << blockId << ") from " << m_senderAddress->to_string());
+	LOG_DEBUG("on_searchBlock(" << rootHash << ", " << blockId << ") from " << m_senderAddress->to_string());
 }
 
 void MulticastHandler::on_searchFileName(std::string filename)
@@ -135,27 +162,27 @@ void MulticastHandler::on_searchFileName(std::string filename)
 	std::string answer;
 	int length = 0;
 	for (auto i = m->begin(); i != m->end(); ++i) {
-		std::string match = boost::filesystem::path((*i)->filename()).filename().string();
+		std::string match((*i)->tree()->rootHash()->data(), 20);
+		match += boost::filesystem::path((*i)->filename()).filename().string();
 		length += match.length();
 		if (length > 200) {
 			break;
 		}
 
-		matches.push_back(match);
+		answer += match + '\0';
 	}
 
-	int length = 0;
-	std::string answer;
-	for (auto i = matches.begin(); i != matches.end(); ++i) {
-		length += i->length();
-		if (length > 200) {
-			break;
-		}
+	m_network->send(
+		*m_senderAddress,
+		MulticastNetwork::Command::SearchFileNameReply,
+		answer.c_str(), answer.length());
+}
 
-		answer += *i + '\0';
+void MulticastHandler::on_searchFileNameReply(std::map<std::string, std::string> const& results)
+{
+	for (auto i = results.begin(); i != results.end(); ++i) {
+		LOG_DEBUG("MatchReply: " << i->first);
 	}
-
-	LOG_DEBUG(answer);
 }
 
 }

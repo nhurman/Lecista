@@ -60,7 +60,7 @@ void MulticastNetwork::listen()
 void MulticastNetwork::send(
 	Command command,
 	char const* data,
-	char size,
+	unsigned char size,
 	boost::asio::ip::address* sender)
 {
 	send(ip::udp::endpoint(MCAST_ADDR, MCAST_PORT), command, data, size, sender);
@@ -70,7 +70,7 @@ void MulticastNetwork::send(
 	boost::asio::ip::address dest,
 	Command command,
 	char const* data,
-	char size,
+	unsigned char size,
 	boost::asio::ip::address* sender)
 {
 	send(ip::udp::endpoint(dest, MCAST_PORT), command, data, size, sender);
@@ -80,7 +80,7 @@ void MulticastNetwork::send(
 	ip::udp::endpoint dest,
 	Command command,
 	char const* data,
-	char size,
+	unsigned char size,
 	boost::asio::ip::address* sender)
 {
 	boost::shared_array<char> packet(new char[HEADER_SIZE + 1 + size]);
@@ -151,7 +151,7 @@ void MulticastNetwork::on_read(boost::system::error_code ec, size_t bytes)
 	}
 
 	char* args = m_readBuffer + HEADER_SIZE + 1;
-	char argsSize = bodyLength - 1;
+	unsigned char argsSize = bodyLength - 1;
 
 	// Dispatch command to handler
 	m_dispatch(senderAddress, command, args, argsSize, true);
@@ -171,7 +171,7 @@ void MulticastNetwork::injectForwarded(
 	boost::asio::ip::address senderAddress,
 	MulticastNetwork::Command command,
 	char *args,
-	char argsSize)
+	unsigned char argsSize)
 {
 	m_dispatch(senderAddress, command, args, argsSize, false);
 }

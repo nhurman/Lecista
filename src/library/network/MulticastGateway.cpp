@@ -32,7 +32,7 @@ MulticastGateway::MulticastGateway(MulticastNetwork* network) : m_networks(5)
 	m_forwardCommands.insert(MulticastNetwork::Command::Hello);
 	m_forwardCommands.insert(MulticastNetwork::Command::Message);
 	m_forwardCommands.insert(MulticastNetwork::Command::SearchBlock);
-	m_forwardCommands.insert(MulticastNetwork::Command::SearchFile);
+	m_forwardCommands.insert(MulticastNetwork::Command::SearchFileName);
 
 	// Alive ping
 	m_onTimeout = 0;

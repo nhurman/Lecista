@@ -11,7 +11,7 @@ class Hash
 {
 friend class Hasher;
 private:
-	unsigned char *m_hash;
+	char *m_hash;
 
 public:
 	//! Use shared pointers to handle memory.
@@ -60,7 +60,7 @@ public:
 	/*!
 	  \return Hash digest
 	*/
-	unsigned char* data() const;
+	char* data() const;
 };
 
 }

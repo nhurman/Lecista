@@ -22,6 +22,7 @@ public:
 		SearchBlock,
 		SearchFileHash,
 		SearchFileName,
+		SearchFileNameReply,
 
 		NUM_COMMANDS
 	};
@@ -42,25 +43,25 @@ public:
 	void send(
 		Command command,
 		char const* data = 0,
-		char size = 0,
+		unsigned char size = 0,
 		boost::asio::ip::address* sender = 0);
 	void send(
 		boost::asio::ip::address dest,
 		Command command,
 		char const* data = 0,
-		char size = 0,
+		unsigned char size = 0,
 		boost::asio::ip::address* sender = 0);
 	void send(
 		boost::asio::ip::udp::endpoint dest,
 		Command command,
 		char const* data = 0,
-		char size = 0,
+		unsigned char size = 0,
 		boost::asio::ip::address* sender = 0);
 	void injectForwarded(
 		boost::asio::ip::address senderAddress,
 		MulticastNetwork::Command command,
 		char *args,
-		char argsSize);
+		unsigned char argsSize);
 
 private:
 	static boost::asio::ip::address const MCAST_ADDR;

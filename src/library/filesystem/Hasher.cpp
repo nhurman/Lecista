@@ -34,7 +34,7 @@ Hash::SharedPtr Hasher::getHash()
 {
 	Hash::SharedPtr hash(new Hash());
 
-	SHA1_Final(hash->m_hash, &m_context);
+	SHA1_Final((unsigned char*)hash->m_hash, &m_context);
 	return hash;
 }
 

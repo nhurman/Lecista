@@ -4,7 +4,7 @@ namespace Lecista {
 
 Hash::Hash()
 {
-	m_hash = new unsigned char[SIZE];
+	m_hash = new char[SIZE];
 	std::memset(m_hash, 0, SIZE);
 }
 
@@ -15,7 +15,7 @@ Hash::Hash(Hash const& other)
 
 Hash::Hash(char const* data)
 {
-	m_hash = new unsigned char[SIZE];
+	m_hash = new char[SIZE];
 	std::memcpy(m_hash, data, SIZE);
 }
 
@@ -42,7 +42,7 @@ bool Hash::operator==(Hash const& other)
 	return std::memcmp(m_hash, other.m_hash, SIZE) == 0;
 }
 
-unsigned char* Hash::data() const
+char* Hash::data() const
 {
 	return m_hash;
 }

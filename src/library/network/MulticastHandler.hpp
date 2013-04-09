@@ -27,7 +27,7 @@ private:
 		boost::asio::ip::address senderAddress,
 		MulticastNetwork::Command command,
 		char *args,
-		char argsSize,
+		unsigned char argsSize,
 		bool forward);
 
 	MulticastGateway* m_gateway;
@@ -35,13 +35,14 @@ private:
 
 	void on_candidate(uint32_t id);
 	void on_electGateway();
-	void on_forward(MulticastNetwork::Command command, char* args, char argsSize);
+	void on_forward(MulticastNetwork::Command command, char* args, unsigned char argsSize);
 	void on_gateway();
 	void on_hello(std::string name, float sharedSize);
 	void on_message(std::string message);
 	void on_remoteGateway();
 	void on_searchBlock(std::string rootHash, uint32_t blockId);
 	void on_searchFileName(std::string filename);
+	void on_searchFileNameReply(std::map<std::string, std::string> const& results);
 };
 
 }

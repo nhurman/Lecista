@@ -20,15 +20,9 @@ int main()
 	explorer.addDirectory("../src");
 	explorer.listDirectories();
 
-
-	boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> matches = db.search("Hash");
-	for (auto i = matches->begin(); i != matches->end(); ++i)
-		LOG_DEBUG("match: " << boost::filesystem::path((*i)->filename()).filename().string());
-
-
 	//TODO getByHash
 
-	//std::cin.get();
+	std::cin.get();
 
 	return 0;
 }
