@@ -76,12 +76,13 @@ void MulticastHandler::dispatch(
 	}
 	else if (Command::SearchFileNameReply == command && 0 < argsSize) {
 		valid = true;
-		std::map<std::string, std::string> results;
+		std::map<std::string, std::pair<float, std::string>> results;
 
 		int index = 0;
 		while (index < argsSize) {
+			float filesize;
 			int stringLength = 0;
-			for (int i = index + Hash::SIZE; i < argsSize; i++) {
+			for (int i = index + Hash::SIZE + sizeof filesize; i < argsSize; i++) {
 				if (args[i] == '\0') {
 					break;
 				}
@@ -89,14 +90,16 @@ void MulticastHandler::dispatch(
 				++stringLength;
 			}
 
-			if (stringLength + Hash::SIZE + index >= argsSize) {
+			if (index + stringLength + Hash::SIZE + sizeof filesize >= argsSize) {
 				break;
 			}
 
 			std::string hash(args + index, Hash::SIZE);
-			std::string filename(args + index + Hash::SIZE, stringLength);
-			results[filename] = hash;
-			index += Hash::SIZE + stringLength + 1;
+			filesize = *reinterpret_cast<float*>(args + index + Hash::SIZE);
+
+			std::string filename(args + index + Hash::SIZE + sizeof filesize, stringLength);
+			results[filename] = std::pair<float, std::string>(filesize, hash);
+			index += Hash::SIZE + sizeof filesize + stringLength + 1;
 		}
 
 		on_searchFileNameReply(results);
@@ -163,13 +166,19 @@ void MulticastHandler::on_searchFileName(std::string filename)
 	int length = 0;
 	for (auto i = m->begin(); i != m->end(); ++i) {
 		std::string match((*i)->tree()->rootHash()->data(), 20);
+		float filesize = static_cast<float>((*i)->tree()->filesize());
+		char size[sizeof(filesize)];
+		std::memcpy(&size, &filesize, sizeof filesize);
+		match += std::string(size, sizeof(size));
 		match += boost::filesystem::path((*i)->filename()).filename().string();
+		match += '\0';
 		length += match.length();
-		if (length > 200) {
+
+		if (length > MulticastNetwork::BODY_MAXSIZE) {
 			break;
 		}
 
-		answer += match + '\0';
+		answer += match;
 	}
 
 	m_network->send(
@@ -178,7 +187,7 @@ void MulticastHandler::on_searchFileName(std::string filename)
 		answer.c_str(), answer.length());
 }
 
-void MulticastHandler::on_searchFileNameReply(std::map<std::string, std::string> const& results)
+void MulticastHandler::on_searchFileNameReply(std::map<std::string, std::pair<float, std::string>> const& results)
 {
 	for (auto i = results.begin(); i != results.end(); ++i) {
 		LOG_DEBUG("MatchReply: " << i->first);

@@ -10,6 +10,8 @@ namespace Lecista {
 class MulticastNetwork
 {
 public:
+	static unsigned char const BODY_MAXSIZE;
+
 	enum class Command : unsigned char
 	{
 		Candidate,

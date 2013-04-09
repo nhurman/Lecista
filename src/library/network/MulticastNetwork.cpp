@@ -8,6 +8,8 @@ ip::address const MulticastNetwork::MCAST_ADDR = ip::address::from_string("224.0
 unsigned short const MulticastNetwork::MCAST_PORT = 49370;
 unsigned char const MulticastNetwork::HEADER_SIZE =
 	sizeof(ip::address_v4::bytes_type) + sizeof(char);
+unsigned char const MulticastNetwork::BODY_MAXSIZE =
+	sizeof(MulticastNetwork::m_readBuffer) - MulticastNetwork::HEADER_SIZE;
 
 MulticastNetwork::MulticastNetwork(IOHandler& io, Dispatcher dispatch)
 : m_io(io), m_dispatch(dispatch)

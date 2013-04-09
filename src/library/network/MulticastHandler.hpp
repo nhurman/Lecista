@@ -42,7 +42,7 @@ private:
 	void on_remoteGateway();
 	void on_searchBlock(std::string rootHash, uint32_t blockId);
 	void on_searchFileName(std::string filename);
-	void on_searchFileNameReply(std::map<std::string, std::string> const& results);
+	void on_searchFileNameReply(std::map<std::string, std::pair<float, std::string>> const& results);
 };
 
 }
