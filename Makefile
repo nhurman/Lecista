@@ -255,7 +255,9 @@ LOBJ += \
 	$(B)/library/network/MulticastNetwork.o \
 	$(B)/library/network/MulticastHandler.o \
 	$(B)/library/network/MulticastGateway.o \
-	$(B)/library/network/GatewayElection.o
+	$(B)/library/network/GatewayElection.o \
+	$(B)/library/network/UnicastHandler.o \
+	$(B)/library/network/Peer.o
 
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(LOBJ)
 	$(echo_cmd) "LD $@"

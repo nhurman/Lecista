@@ -42,6 +42,13 @@ public:
 		HashTree *m_tree;
 	};
 
+	class PartialFile : public File
+	{
+	friend class HashDatabase;
+	public:
+
+	};
+
 	/*!
 	  \param database Database directory path
 	*/
@@ -100,6 +107,7 @@ private:
 	{
 		Hash,
 		Filename,
+		Partial,
 		End
 	};
 

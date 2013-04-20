@@ -13,6 +13,7 @@ HashDatabase::HashDatabase(std::string const& database)
 	std::string empty;
 	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::Hash)), empty);
 	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::Filename)), empty);
+	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::Partial)), empty);
 	m_db->Put(leveldb::WriteOptions(), std::string(1, static_cast<char>(Key::End)), empty);
 }
 
@@ -139,7 +140,7 @@ void HashDatabase::delDirectory(std::string path)
 
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
 	std::string begin(1, static_cast<char>(Key::Filename)),
-		end(1, static_cast<char>(Key::End));
+		end(1, static_cast<char>(Key::Partial));
 
 	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		char const* key = it->key().data();
@@ -204,7 +205,7 @@ boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> HashDatabase::searc
 
 	boost::to_lower(name);
 	std::string begin(1, static_cast<char>(Key::Filename)),
-		end(1, static_cast<char>(Key::End));
+		end(1, static_cast<char>(Key::Partial));
 
 	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		if (std::string::npos != boost::to_lower_copy(it->key().ToString()).find(name)) {
