@@ -90,8 +90,18 @@ DO_CXXFLAGS = -std=c++0x
 OPTIMIZE = -O3
 
 ifeq ($(STATIC),1)
-	BASE_CXXFLAGS += -static
+	BASE_CXXFLAGS += -static -DBOOST_THREAD_USE_LIB
 endif
+
+## LIBS
+LIBS += -lboost_system \
+	-lboost_filesystem \
+	-lboost_thread \
+	-lboost_date_time \
+	-lboost_chrono \
+	-lcrypto \
+	-lleveldb \
+	-lpthread
 
 #############################################################################
 # SETUP AND BUILD -- LINUX
@@ -100,6 +110,7 @@ endif
 ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
 	BASE_CXXFLAGS += -pipe
 	CXX = clang++
+	LIBS += -lrt
 else # ifeq Linux
 
 #############################################################################
@@ -107,6 +118,9 @@ else # ifeq Linux
 #############################################################################
 
 ifeq ($(PLATFORM),mingw32)
+
+BASE_CXXFLAGS += -D_WIN32_WINNT=0x0501 -DWINVER=0x0501
+LIBS += -lws2_32
 
 # Some MinGW installations define CC to cc, but don't actually provide cc,
 # so explicitly use gcc instead (which is the only option anyway)
@@ -159,18 +173,6 @@ define DO_CXX
 $(echo_cmd) "CXX $<"
 $(Q)$(CXX) $(CXXFLAGS) $(DO_CXXFLAGS) -o $@ -c $<
 endef
-
-
-## LIBS
-LIBS += -lboost_system \
-	-lboost_filesystem \
-	-lboost_thread \
-	-lboost_date_time \
-	-lboost_chrono \
-	-lcrypto \
-	-lleveldb \
-	-lpthread \
-	-lrt
 
 #############################################################################
 # MAIN TARGETS

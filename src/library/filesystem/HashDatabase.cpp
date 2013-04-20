@@ -132,7 +132,7 @@ void HashDatabase::delDirectory(std::string path)
 	assert(path.length() > 0);
 
 	boost::filesystem::path slash("/");
-	std::string preferredSlash = slash.make_preferred().native();
+	std::string preferredSlash = slash.make_preferred().string();
 
 	if (path[path.length() - 1] != preferredSlash[0])
 		path += preferredSlash[0];

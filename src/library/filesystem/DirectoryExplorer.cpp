@@ -47,7 +47,7 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 	}
 
 	boost::filesystem::path slash("/");
-	std::string preferredSlash = slash.make_preferred().native();
+	std::string preferredSlash = slash.make_preferred().string();
 
 	if (rootpath[rootpath.length() - 1] != preferredSlash[0])
 		rootpath += preferredSlash[0];
