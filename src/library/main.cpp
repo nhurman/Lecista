@@ -5,20 +5,24 @@
 #include "filesystem/DirectoryExplorer.hpp"
 #include "network/IOHandler.hpp"
 #include "network/MulticastHandler.hpp"
+#include "network/UnicastHandler.hpp"
 
 using namespace Lecista;
 
 int main()
 {
+
 	Config config;
 	HashDatabase db;
-	DirectoryExplorer explorer(db, config);
+//	DirectoryExplorer explorer(db, config);
 
 	IOHandler io;
-	MulticastHandler mcast(io, db);
+//	MulticastHandler mcast(io, db);
 
-	explorer.addDirectory("../src");
+/*	explorer.addDirectory("../src");
 	explorer.listDirectories();
+*/
+	UnicastHandler ucast(io, db);
 
 	//TODO getByHash
 

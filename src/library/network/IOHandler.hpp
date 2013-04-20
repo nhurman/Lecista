@@ -17,6 +17,7 @@ public:
 	IOHandler();
 	~IOHandler();
 
+	boost::asio::io_service& ioService() { return m_ioService; }
 	boost::asio::ip::udp::socket* createUdpSocket();
 	boost::asio::deadline_timer* createTimer();
 	void start();
