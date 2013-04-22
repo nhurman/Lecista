@@ -42,6 +42,7 @@ MulticastNetwork::MulticastNetwork(IOHandler& io, Dispatcher dispatch)
 
 MulticastNetwork::~MulticastNetwork()
 {
+	m_socket->close();
 	m_io.stop();
 	delete m_socket;
 }

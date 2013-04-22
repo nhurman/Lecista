@@ -120,7 +120,7 @@ else # ifeq Linux
 ifeq ($(PLATFORM),mingw32)
 
 BASE_CXXFLAGS += -D_WIN32_WINNT=0x0501 -DWINVER=0x0501
-LIBS += -lws2_32
+LIBS += -lws2_32 -lmswsock
 
 # Some MinGW installations define CC to cc, but don't actually provide cc,
 # so explicitly use gcc instead (which is the only option anyway)
@@ -140,7 +140,6 @@ ifeq ($(ARCH),x86)
 else
 	BASE_CXXFLAGS += -m64
 endif
-	CLIENT_LIBS += -lmingw32
 else # ifeq mingw32
 
 #############################################################################

@@ -40,6 +40,7 @@ void IOHandler::stop()
 {
 	if (0 != m_thread) {
 		LOG_DEBUG("Stopping io processing thread");
+		m_ioService.stop();
 		if (!m_thread->try_join_for(boost::chrono::milliseconds(500))) {
 			m_thread->interrupt();
 		}

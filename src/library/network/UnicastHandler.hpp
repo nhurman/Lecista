@@ -27,13 +27,13 @@ private:
 
 	void accept();
 	void on_accept(Peer::SharedPtr peer, boost::system::error_code const& ec);
+	void cleanupPeers();
 
 	IOHandler& m_io;
 	HashDatabase& m_db;
 
 	boost::asio::ip::tcp::endpoint m_localEndpoint;
 	boost::asio::ip::tcp::acceptor m_acceptor;
-
 	std::deque<Peer::SharedPtr> m_peers;
 };
 
