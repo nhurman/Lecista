@@ -21,7 +21,7 @@ UnicastHandler::~UnicastHandler()
 
 void UnicastHandler::accept()
 {
-	Peer::SharedPtr peer(new Peer(m_io, boost::bind(&UnicastHandler::cleanupPeers, this)));
+	Peer::SharedPtr peer(new Peer(m_io, m_db, boost::bind(&UnicastHandler::cleanupPeers, this)));
 	m_acceptor.async_accept(peer->socket(), boost::bind(
 		&UnicastHandler::on_accept,
 		this, peer, boost::asio::placeholders::error));
@@ -38,22 +38,24 @@ void UnicastHandler::on_accept(Peer::SharedPtr peer, boost::system::error_code c
 		return;
 	}
 
-	peer->initiate();
+	peer->init();
 	m_peers.push_back(peer);
 	accept();
 }
 
 void UnicastHandler::cleanupPeers()
 {
-	for (auto it = m_peers.begin(), e = m_peers.end(); it != e; ) {
+	LOG_DEBUG("GC");
+	std::deque<std::deque<Peer::SharedPtr>::iterator> toDelete;
+
+	for (auto it = m_peers.begin(), e = m_peers.end(); it != e; ++it) {
 		if ((*it)->state() == Peer::State::Closed) {
-			auto i = it;
-			++it;
-			m_peers.erase(i);
+			toDelete.push_back(it);
 		}
-		else {
-			++it;
-		}
+	}
+
+	for (auto it: toDelete) {
+		m_peers.erase(it);
 	}
 }
 

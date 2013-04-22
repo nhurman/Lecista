@@ -37,6 +37,8 @@ is valid by computing and comparing the root hash.
 class HashTree
 {
 public:
+	static const int BLOCK_SIZE = 16 * 1000 * 1000; // 16 MB
+
 	HashTree();
 
 	//! Hash a file
@@ -112,8 +114,6 @@ public:
 		std::vector<Hash::SharedPtr> const& hashList);
 
 private:
-	static const int BLOCK_SIZE = 16 * 1000 * 1000; // 16 MB
-
 	std::string m_filename;
 	uintmax_t m_filesize;
 	std::deque<std::vector<Hash::SharedPtr>> m_tree;

@@ -2,6 +2,7 @@
 
 #include <boost/asio.hpp>
 #include "IOHandler.hpp"
+#include "../filesystem/HashDatabase.hpp"
 #include "../filesystem/Hash.hpp"
 #include "../Logger.hpp"
 
@@ -28,24 +29,28 @@ public:
 		Closed
 	};
 
-	Peer(IOHandler& io, boost::function<void()> handler);
+	Peer(IOHandler& io, HashDatabase& db, boost::function<void()> handler);
 	~Peer();
 
 	boost::asio::ip::tcp::socket& socket() { return m_socket; }
 	State state() { return m_state; }
-	void initiate();
+	void init();
+
+	void sendBlock(Hash::SharedPtr fileHash, unsigned int block);
 
 private:
 	void listen();
 	void on_read(boost::system::error_code const& ec, size_t bytes);
-	void close();
+	void on_write(boost::system::error_code const& ec, uintmax_t start, uintmax_t end);
+	void disconnect();
 
 	boost::function<void()> m_onClose;
 	IOHandler& m_io;
+	HashDatabase& m_db;
 	char m_readBuffer[500 * 1000]; // 500 kB
 	boost::asio::ip::tcp::socket m_socket;
-	boost::asio::ip::tcp::endpoint m_remoteEndpoint;
-	Hash::SharedPtr m_hash;
+	HashDatabase::File::SharedPtr m_file;
+	std::ifstream* m_fh;
 
 	State m_state;
 	unsigned int m_block;

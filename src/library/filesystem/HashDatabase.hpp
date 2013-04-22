@@ -69,6 +69,13 @@ public:
 	*/
 	File::SharedPtr getFile(std::string const& filename);
 
+	//! Fetch a file with the corresponding hash
+	/*!
+	  \param hash File hash
+	  \return File structure
+	*/
+	File::SharedPtr find(Hash::SharedPtr const& hash);
+
 	//! Check if a file is cached in the index.
 	/*!
 	  \param filename File path

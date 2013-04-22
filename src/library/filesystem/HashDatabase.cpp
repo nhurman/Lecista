@@ -57,6 +57,17 @@ HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
 	return file;
 }
 
+HashDatabase::File::SharedPtr HashDatabase::find(Hash::SharedPtr const& hash)
+{
+	std::string data, key = static_cast<char>(Key::Hash) +
+		std::string(hash->data(), Hash::SIZE);
+	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &data);
+	assert(s.ok());
+
+	HashDatabase::File::SharedPtr file = unserialize(data.c_str(), data.length());
+	return file;
+}
+
 bool HashDatabase::exists(std::string const& filename)
 {
 	std::string value;
