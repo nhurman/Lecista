@@ -16,14 +16,7 @@ public:
 	~UnicastHandler();
 
 private:
-	// uint32_t  Body Size
-	// char      Command
-	// char[]    Body
-
-	enum {
-		HEADER_SIZE = sizeof(uint32_t) + sizeof(char),
-		UNICAST_PORT = 49370,
-	};
+	static unsigned short const UNICAST_PORT = 49370;
 
 	void accept();
 	void on_accept(Peer::SharedPtr peer, boost::system::error_code const& ec);

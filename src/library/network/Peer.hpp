@@ -1,6 +1,8 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_array.hpp>
 #include "IOHandler.hpp"
 #include "../filesystem/HashDatabase.hpp"
 #include "../filesystem/Hash.hpp"
@@ -8,13 +10,14 @@
 
 namespace Lecista {
 
-class Peer
+class Peer : public boost::enable_shared_from_this<Peer>
 {
 public:
 	typedef boost::shared_ptr<Peer> SharedPtr;
 	enum class Command : unsigned char
 	{
-		Block,
+		DownloadBlock = 'D',
+		UploadBlock = 'U',
 
 		NUM_COMMANDS
 	};
@@ -24,8 +27,8 @@ public:
 	{
 		NewlyCreated,
 		Idle,
-		SendingBlock,
-		ReceivingBlock,
+		Uploading,
+		Downloading,
 		Closed
 	};
 
@@ -39,9 +42,15 @@ public:
 	void sendBlock(Hash::SharedPtr fileHash, unsigned int block);
 
 private:
+
+	// uint32_t  Body Size
+	// char      Command
+	// char[]    Body
+
 	void listen();
 	void on_read(boost::system::error_code const& ec, size_t bytes);
-	void on_write(boost::system::error_code const& ec, uintmax_t start, uintmax_t end);
+	void on_write(boost::shared_array<char> b, boost::system::error_code const& ec, uintmax_t start, uintmax_t end);
+	void readBytes(size_t bytes = 0);
 	void disconnect();
 
 	boost::function<void()> m_onClose;
