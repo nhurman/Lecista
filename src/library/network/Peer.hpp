@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <boost/asio.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_array.hpp>
@@ -39,7 +40,7 @@ public:
 	State state() { return m_state; }
 	void init();
 
-	void sendBlock(Hash::SharedPtr fileHash, unsigned int block);
+	void sendBlock(Hash::SharedPtr fileHash, uint32_t block);
 
 private:
 
@@ -49,6 +50,10 @@ private:
 
 	void listen();
 	void on_read(boost::system::error_code const& ec, size_t bytes);
+	void on_headerSent(
+		boost::shared_array<char> buffer,
+		boost::system::error_code const& ec,
+		boost::function<void()> callback);
 	void on_write(boost::shared_array<char> b, boost::system::error_code const& ec, uintmax_t start, uintmax_t end);
 	void readBytes(size_t bytes = 0);
 	void disconnect();
@@ -62,6 +67,7 @@ private:
 	std::ifstream* m_fh;
 
 	State m_state;
+	bool m_parsedArgs;
 	unsigned int m_block;
 	size_t m_uploaded;
 	size_t m_downloaded;

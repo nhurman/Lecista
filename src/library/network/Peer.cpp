@@ -7,14 +7,12 @@ namespace Lecista {
 Peer::Peer(IOHandler& io, HashDatabase& db, boost::function<void()> handler)
  : m_onClose(handler), m_io(io), m_db(db), m_socket(io.ioService()), m_state(State::NewlyCreated)
 {
-	LOG_DEBUG("Constructor");
 	m_state = State::NewlyCreated;
 	m_fh = 0;
 }
 
 Peer::~Peer()
 {
-	LOG_DEBUG("Destructor");
 	if (m_fh) {
 		delete m_fh;
 	}
@@ -32,7 +30,7 @@ void Peer::disconnect()
 
 void Peer::init()
 {
-	LOG_DEBUG("initiate() with " << m_socket.remote_endpoint().address().to_string());
+	LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Connected");
 
 	m_state = State::Idle;
 	readBytes(sizeof(Command));
@@ -69,28 +67,37 @@ void Peer::on_read(boost::system::error_code const& ec, size_t bytes)
 		return;
 	}
 
-	LOG_DEBUG("Got " << bytes << " bytes");
+	LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " >> " << bytes << " bytes");
 
 	if (State::Idle == m_state) { // Waiting for a command
 		assert(sizeof(Command) == bytes);
 		Command c = *reinterpret_cast<Command*>(m_readBuffer);
 
 		if (Command::DownloadBlock == c) {
-			LOG_DEBUG("Command::DownloadBlock");
+			LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Command::DownloadBlock");
+			m_state = State::Uploading;
 
-			HashDatabase::File::SharedPtr f = m_db.getFile(
-				"/home/nicolas/Prog/C++/Lecista/src/library/main.cpp");
-			Hash::SharedPtr h = f->tree()->rootHash();
-			sendBlock(h, 0);
+			// char[20] Hash
+			// uint32_t Block
+			m_parsedArgs = false;
+			readBytes(Hash::SIZE + sizeof(uint32_t));
 		}
 		else if (Command::UploadBlock == c) {
-			LOG_DEBUG("Command::UploadBlock");
+			LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Command::UploadBlock");
 			m_state = State::Downloading;
 		}
 		else {
 			disconnect();
 			return;
 		}
+	}
+	else if (State::Uploading == m_state && !m_parsedArgs) {
+		assert(Hash::SIZE + sizeof(uint32_t) == bytes);
+		Hash::SharedPtr h(new Hash(m_readBuffer));
+		uint32_t blockId = ntohl(*reinterpret_cast<uint32_t*>(m_readBuffer + Hash::SIZE));
+		m_parsedArgs = true;
+
+		sendBlock(h, blockId);
 	}
 
 	if (State::Uploading == m_state) {
@@ -101,12 +108,31 @@ void Peer::on_read(boost::system::error_code const& ec, size_t bytes)
 	}
 }
 
-void Peer::sendBlock(Hash::SharedPtr fileHash, unsigned int block)
+void Peer::sendBlock(Hash::SharedPtr fileHash, uint32_t block)
 {
-	assert(State::Idle == m_state);
-	m_state = State::Uploading;
+	assert(State::Uploading == m_state);
 
 	m_file = m_db.find(fileHash);
+	LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Sending \"" << m_file->filename() << "\"~" << block);
+
+
+	// uint32_t   NbHash
+	// char[20]   Hash (NbHash times)
+	// uint32_t   Size
+	// char[Size] Data
+
+	std::vector<Hash::SharedPtr> hashes = m_file->tree()->blockHashList(block);
+	unsigned int const headerSize =
+		sizeof(uint32_t) + Hash::SIZE * hashes.size() + sizeof(uint32_t);
+	boost::shared_array<char> buffer(new char[headerSize]);
+	char *b = buffer.get();
+	*reinterpret_cast<uint32_t*>(b) = htonl(hashes.size());
+	b += sizeof(uint32_t);
+
+	for (int i = 0; i < hashes.size(); ++i) {
+		std::memcpy(b, hashes[i]->data(), Hash::SIZE);
+		b += Hash::SIZE;
+	}
 
 	if (m_fh) {
 		delete m_fh;
@@ -119,7 +145,26 @@ void Peer::sendBlock(Hash::SharedPtr fileHash, unsigned int block)
 	uintmax_t endIndex = std::min(m_file->tree()->filesize(), startIndex + HashTree::BLOCK_SIZE);
 	assert(startIndex < m_file->tree()->filesize());
 
-	on_write(boost::shared_array<char>(), boost::system::error_code(), startIndex, endIndex);
+	*reinterpret_cast<uint32_t*>(b) = htonl(endIndex - startIndex);
+
+	boost::function<void()> callback =
+		boost::bind(&Peer::on_write, shared_from_this(),
+			buffer,
+			boost::system::error_code(),
+			startIndex,
+			endIndex);
+
+	m_socket.async_send(boost::asio::buffer(buffer.get(), headerSize),
+		boost::bind(&Peer::on_headerSent, shared_from_this(),
+			buffer, boost::asio::placeholders::error, callback));
+}
+
+void Peer::on_headerSent(
+	boost::shared_array<char> buffer,
+	boost::system::error_code const& ec,
+	boost::function<void()> callback)
+{
+	callback();
 }
 
 void Peer::on_write(boost::shared_array<char> b, boost::system::error_code const& ec, uintmax_t start, uintmax_t end)
@@ -144,7 +189,6 @@ void Peer::on_write(boost::shared_array<char> b, boost::system::error_code const
 	m_fh->seekg(start, m_fh->beg);
 
 	if (!m_fh->eof() && m_fh->tellg() < end) {
-		LOG_DEBUG("START=" << start << " END=" << end);
 		m_fh->read(buffer.get(), BufferSize);
 		m_socket.async_send(boost::asio::buffer(buffer.get(), m_fh->gcount()),
 			boost::bind(&Peer::on_write, shared_from_this(), buffer,

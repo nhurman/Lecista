@@ -94,7 +94,7 @@ unsigned int HashTree::hashLevel()
 	return hashList.size();
 }
 
-vector<Hash::SharedPtr> HashTree::blockHashList(unsigned int index)
+vector<Hash::SharedPtr> HashTree::blockHashList(unsigned int index) const
 {
 	vector<Hash::SharedPtr> hashList(m_tree.size() - 1);
 	unsigned int parent = index, sibling;
@@ -111,8 +111,8 @@ vector<Hash::SharedPtr> HashTree::blockHashList(unsigned int index)
 			if (sibling < i->size()) {
 				hashList[index++] = (*i)[sibling];
 			}
-			else { // Empty hash pointer for orphan branches
-				hashList[index++] = Hash::SharedPtr();
+			else { // Null hash for orphan branches
+				hashList[index++] = Hash::SharedPtr(new Hash());
 			}
 
 			parent = (parent - (parent % 2)) / 2;
@@ -213,23 +213,18 @@ bool HashTree::checkBlockHash(
 	Hash::SharedPtr globalHash = hash;
 
 	for (auto i = hashList.begin(); i != hashList.end(); ++i) {
-		if (!*i) {
-			// Orphan branch (non-binary tree), keep current hash
+		hasher.reset();
+
+		if (parent % 2 == 0) {
+			hasher.update(globalHash);
+			hasher.update(*i);
 		}
 		else {
-			hasher.reset();
-
-			if (parent % 2 == 0) {
-				hasher.update(globalHash);
-				hasher.update(*i);
-			}
-			else {
-				hasher.update(*i);
-				hasher.update(globalHash);
-			}
-
-			globalHash = hasher.getHash();
+			hasher.update(*i);
+			hasher.update(globalHash);
 		}
+
+		globalHash = hasher.getHash();
 
 		parent = (parent - (parent % 2)) / 2;
 	}

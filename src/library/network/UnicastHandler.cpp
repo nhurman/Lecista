@@ -45,7 +45,6 @@ void UnicastHandler::on_accept(Peer::SharedPtr peer, boost::system::error_code c
 
 void UnicastHandler::cleanupPeers()
 {
-	LOG_DEBUG("GC");
 	std::deque<std::deque<Peer::SharedPtr>::iterator> toDelete;
 
 	for (auto it = m_peers.begin(), e = m_peers.end(); it != e; ++it) {

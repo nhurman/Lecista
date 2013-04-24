@@ -70,8 +70,8 @@ HashDatabase::File::SharedPtr HashDatabase::find(Hash::SharedPtr const& hash)
 
 bool HashDatabase::exists(std::string const& filename)
 {
-	std::string value;
-	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), filename, &value);
+	std::string data, key = static_cast<char>(Key::Filename) + filename;
+	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &data);
 	return s.ok();
 }
 
@@ -201,8 +201,15 @@ void HashDatabase::list()
 {
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
 
-	for (it->SeekToFirst(); it->Valid(); it->Next()) {
-		std::cout << it->key().ToString() << std::endl;
+	std::string begin(1, static_cast<char>(Key::Hash)),
+		end(1, static_cast<char>(Key::Filename));
+
+	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
+		std::cout << "[";
+		for (int i = 1; i <= Hash::SIZE; i += 4) {
+			std::cout << std::hex << htonl(*(int*)(it->key().ToString().c_str() + i));
+		}
+		std::cout << "] " << it->value().ToString().c_str() << std::endl;
 	}
 
 	assert(it->status().ok());

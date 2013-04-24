@@ -9,6 +9,7 @@
 
 #include "Hash.hpp"
 #include "Hasher.hpp"
+#include "../Logger.hpp"
 
 namespace Lecista {
 
@@ -58,7 +59,7 @@ public:
 	  \param index Block index
 	  \return Hash digests list
 	*/
-	std::vector<Hash::SharedPtr> blockHashList(unsigned int index);
+	std::vector<Hash::SharedPtr> blockHashList(unsigned int index) const;
 
 	//! Get the root hash for the current file
 	/*!

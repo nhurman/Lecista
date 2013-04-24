@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/asio.hpp>
 #include <string>
 #include <sstream>
 #include <deque>

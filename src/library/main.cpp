@@ -19,8 +19,10 @@ int main()
 	IOHandler io;
 	//MulticastHandler mcast(io, db);
 
-	explorer.addDirectory("../src");
-	explorer.listDirectories();
+	//explorer.addDirectory("../src");
+	explorer.addDirectory("/tmp/share");
+	//explorer.listDirectories();
+	db.list();
 
 	UnicastHandler ucast(io, db);
 
