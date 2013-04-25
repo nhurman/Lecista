@@ -121,7 +121,7 @@ void Peer::sendBlock(Hash::SharedPtr fileHash, uint32_t block)
 	// uint32_t   Size
 	// char[Size] Data
 
-	std::vector<Hash::SharedPtr> hashes = m_file->tree()->blockHashList(block);
+	std::vector<Hash::SharedPtr> hashes = m_file->file()->hashList(block);
 	unsigned int const headerSize =
 		sizeof(uint32_t) + Hash::SIZE * hashes.size() + sizeof(uint32_t);
 	boost::shared_array<char> buffer(new char[headerSize]);
@@ -141,9 +141,9 @@ void Peer::sendBlock(Hash::SharedPtr fileHash, uint32_t block)
 	m_fh = new std::ifstream(m_file->filename(), std::ios::binary);
 	assert(m_fh->is_open());
 
-	uintmax_t startIndex = block * HashTree::BLOCK_SIZE;
-	uintmax_t endIndex = std::min(m_file->tree()->filesize(), startIndex + HashTree::BLOCK_SIZE);
-	assert(startIndex < m_file->tree()->filesize());
+	uintmax_t startIndex = block * File::BLOCK_SIZE;
+	uintmax_t endIndex = std::min(m_file->file()->filesize(), startIndex + File::BLOCK_SIZE);
+	assert(startIndex < m_file->file()->filesize());
 
 	*reinterpret_cast<uint32_t*>(b) = htonl(endIndex - startIndex);
 

@@ -161,12 +161,12 @@ void MulticastHandler::on_searchFileName(std::string filename)
 {
 	LOG_DEBUG("on_searchFileName(" << filename << ") from " << m_senderAddress->to_string());
 
-	boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> m = m_db.search(filename);
+	boost::shared_ptr<std::deque<HashDatabase::FileEntry::SharedPtr>> m = m_db.search(filename);
 	std::string answer;
 	int length = 0;
 	for (auto i = m->begin(); i != m->end(); ++i) {
-		std::string match((*i)->tree()->rootHash()->data(), 20);
-		float filesize = static_cast<float>((*i)->tree()->filesize());
+		std::string match((*i)->file()->rootHash()->data(), 20);
+		float filesize = static_cast<float>((*i)->file()->filesize());
 		char size[sizeof(filesize)];
 		std::memcpy(&size, &filesize, sizeof filesize);
 		match += std::string(size, sizeof(size));

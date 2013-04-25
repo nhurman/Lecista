@@ -3,6 +3,7 @@
 #include "filesystem/Config.hpp"
 #include "filesystem/HashDatabase.hpp"
 #include "filesystem/DirectoryExplorer.hpp"
+#include "filesystem/CompleteFile.hpp"
 #include "network/IOHandler.hpp"
 #include "network/MulticastHandler.hpp"
 #include "network/UnicastHandler.hpp"
@@ -11,7 +12,6 @@ using namespace Lecista;
 
 int main()
 {
-
 	Config config;
 	HashDatabase db;
 	DirectoryExplorer explorer(db, config);

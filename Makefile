@@ -110,7 +110,7 @@ LIBS += -lboost_system \
 ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
 	BASE_CXXFLAGS += -pipe
 	CXX = clang++
-	LIBS += -lrt
+	LIBS += -lrt -lsnappy
 else # ifeq Linux
 
 #############################################################################
@@ -247,7 +247,8 @@ LOBJ += \
 	$(B)/library/filesystem/Hash.o \
 	$(B)/library/filesystem/Hasher.o \
 	$(B)/library/filesystem/HashDatabase.o \
-	$(B)/library/filesystem/HashTree.o
+	$(B)/library/filesystem/File.o \
+	$(B)/library/filesystem/CompleteFile.o
 
 LOBJ += \
 	$(B)/library/network/IOHandler.o \

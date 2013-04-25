@@ -63,7 +63,7 @@ private:
 	HashDatabase& m_db;
 	char m_readBuffer[500 * 1000]; // 500 kB
 	boost::asio::ip::tcp::socket m_socket;
-	HashDatabase::File::SharedPtr m_file;
+	HashDatabase::FileEntry::SharedPtr m_file;
 	std::ifstream* m_fh;
 
 	State m_state;

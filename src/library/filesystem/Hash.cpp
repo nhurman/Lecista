@@ -47,4 +47,16 @@ char* Hash::data() const
 	return m_hash;
 }
 
+std::string Hash::string() const
+{
+	std::ostringstream out;
+	for (int i = 0; i < SIZE; i += sizeof(int)) {
+		out << std::hex << std::setw(sizeof(int)*2) << std::setfill('0')
+			<< htonl(*reinterpret_cast<int*>(m_hash + i))
+			<< std::setfill(' ');
+	}
+
+	return out.str();
+}
+
 }

@@ -1,7 +1,11 @@
 #pragma once
 
 #include <cstring>
+#include <string>
+#include <fstream>
+#include <iomanip>
 #include <openssl/sha.h>
+#include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 
 namespace Lecista {
@@ -61,6 +65,12 @@ public:
 	  \return Hash digest
 	*/
 	char* data() const;
+
+	//! Return a string representation of the hash
+	/*!
+	  \return Hex digits string
+	*/
+	std::string string() const;
 };
 
 }

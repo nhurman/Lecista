@@ -8,46 +8,36 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <leveldb/db.h>
-#include "HashTree.hpp"
+#include "CompleteFile.hpp"
+#include "File.hpp"
 #include "../Logger.hpp"
 
 namespace Lecista {
 
-//! Stores hashes of shared files LevelDB database.
+//! Stores hashes of shared files in a LevelDB database.
 class HashDatabase
 {
 public:
 	//! File representation
-	class File
+	class FileEntry
 	{
 	friend class HashDatabase;
 	public:
 		//! Use shared pointers to handle memory
-		typedef boost::shared_ptr<File> SharedPtr;
+		typedef boost::shared_ptr<FileEntry> SharedPtr;
 
-		~File() { delete m_tree; }
+		~FileEntry() { if (m_file) delete m_file; }
 
-		std::string filename() { return m_filename; }
-		time_t lastWrite() { return m_lastWrite; }
-		HashTree const* tree() { return m_tree; }
+		std::string filename() const { return m_filename; }
+		time_t lastWrite() const { return m_lastWrite; }
+		File const* file() { return m_file; }
 
 	private:
-		//! Constructs the object and initializes the hash tree
-		/*!
-		  \param t Hash tree
-		*/
-		File(HashTree *t) : m_tree(t) {}
+		FileEntry() : m_file(0) {}
 
 		std::string m_filename;
 		time_t m_lastWrite;
-		HashTree *m_tree;
-	};
-
-	class PartialFile : public File
-	{
-	friend class HashDatabase;
-	public:
-
+		File* m_file;
 	};
 
 	/*!
@@ -68,14 +58,14 @@ public:
 	  \param filename File path
 	  \return File structure
 	*/
-	File::SharedPtr getFile(std::string const& filename);
+	FileEntry::SharedPtr getFile(std::string const& filename);
 
 	//! Fetch a file with the corresponding hash
 	/*!
 	  \param hash File hash
 	  \return File structure
 	*/
-	File::SharedPtr find(Hash::SharedPtr const& hash);
+	FileEntry::SharedPtr find(Hash::SharedPtr const& hash);
 
 	//! Check if a file is cached in the index.
 	/*!
@@ -104,7 +94,7 @@ public:
 	  \param name String to look for in file names
 	  \return List of mathing file names
 	*/
-	boost::shared_ptr<std::deque<File::SharedPtr>> search(std::string name);
+	boost::shared_ptr<std::deque<FileEntry::SharedPtr>> search(std::string name);
 
 	//! Dump the index
 	//! \todo Remove this
@@ -122,8 +112,8 @@ private:
 	leveldb::DB *m_db;
 
 	unsigned int serialize(std::string const& filename, char*& out, char* rootHash = 0) const;
-	File::SharedPtr unserialize(char const* data, unsigned int size, bool tree = true);
-	File::SharedPtr unserialize(leveldb::Slice const& slice, bool tree = true);
+	FileEntry::SharedPtr unserialize(char const* data, unsigned int size, bool file = true);
+	FileEntry::SharedPtr unserialize(leveldb::Slice const& slice, bool file = true);
 };
 
 }

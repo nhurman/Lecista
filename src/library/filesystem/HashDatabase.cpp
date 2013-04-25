@@ -43,7 +43,7 @@ void HashDatabase::addFile(std::string const& filename)
 	delete[] out;
 }
 
-HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
+HashDatabase::FileEntry::SharedPtr HashDatabase::getFile(std::string const& filename)
 {
 	std::string data, key = static_cast<char>(Key::Filename) + filename;
 	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &data);
@@ -53,19 +53,19 @@ HashDatabase::File::SharedPtr HashDatabase::getFile(std::string const& filename)
 	s = m_db->Get(leveldb::ReadOptions(), key, &data);
 	assert(s.ok());
 
-	HashDatabase::File::SharedPtr file = unserialize(data.c_str(), data.length());
+	HashDatabase::FileEntry::SharedPtr file = unserialize(data.c_str(), data.size());
 	return file;
 }
 
-HashDatabase::File::SharedPtr HashDatabase::find(Hash::SharedPtr const& hash)
+HashDatabase::FileEntry::SharedPtr HashDatabase::find(Hash::SharedPtr const& hash)
 {
 	std::string data, key = static_cast<char>(Key::Hash) +
 		std::string(hash->data(), Hash::SIZE);
 	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &data);
 	assert(s.ok());
 
-	HashDatabase::File::SharedPtr file = unserialize(data.c_str(), data.length());
-	return file;
+	HashDatabase::FileEntry::SharedPtr entry = unserialize(data.c_str(), data.length());
+	return entry;
 }
 
 bool HashDatabase::exists(std::string const& filename)
@@ -78,31 +78,31 @@ bool HashDatabase::exists(std::string const& filename)
 unsigned int HashDatabase::serialize(std::string const& filename, char*& out, char* rootHash) const
 {
 	time_t lastWrite = boost::filesystem::last_write_time(filename);
-	HashTree tree(filename);
+	CompleteFile file(filename);
 	if (rootHash) {
-		std::memcpy(rootHash, tree.rootHash()->data(), Hash::SIZE);
+		std::memcpy(rootHash, file.rootHash()->data(), Hash::SIZE);
 	}
 
 	unsigned int s_filename = filename.length() + 1;
 	unsigned int s_lastWrite = sizeof lastWrite;
-	unsigned int s_tree = tree.getSerializedSize();
-	unsigned int size = s_filename + s_lastWrite + s_tree;
+	unsigned int s_file = file.serializedSize();
+	unsigned int size = s_filename + s_lastWrite + s_file;
 
 	out = new char[size];
 	std::memcpy(out, filename.c_str(), s_filename);
 	std::memcpy(out + s_filename, &lastWrite, s_lastWrite);
 
-	char *treeBeginning = out + s_filename + s_lastWrite;
-	tree.serialize(treeBeginning);
+	char *fileBeginning = out + s_filename + s_lastWrite;
+	file.serialize(fileBeginning);
 
 	return size;
 }
 
-HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsigned int size, bool tree)
+HashDatabase::FileEntry::SharedPtr HashDatabase::unserialize(
+	char const* data, unsigned int size, bool file)
 {
-	File::SharedPtr file(new File(new HashTree()));
-	unsigned int s_lastWrite = sizeof(file->m_lastWrite);
-	unsigned int s_filename;
+	FileEntry::SharedPtr entry(new FileEntry);
+	unsigned int s_lastWrite = sizeof(entry->m_lastWrite), s_filename;
 
 	for (s_filename = 0; s_filename < size - s_lastWrite - Hash::SIZE; ++s_filename) {
 		if (data[s_filename] == '\0') {
@@ -112,19 +112,20 @@ HashDatabase::File::SharedPtr HashDatabase::unserialize(char const* data, unsign
 
 	++s_filename;
 	assert(s_filename < size - s_lastWrite - Hash::SIZE);
-	file->m_filename = data;
+	entry->m_filename = data;
 
-	memcpy(&(file->m_lastWrite), data + s_filename, s_lastWrite);
-	if (tree) {
-		file->m_tree->unserialize(data + s_filename + s_lastWrite, size - s_lastWrite - s_filename);
+
+	memcpy(&(entry->m_lastWrite), data + s_filename, s_lastWrite);
+	if (file) {
+		entry->m_file = new File(data + s_filename + s_lastWrite, size - s_filename - s_lastWrite);
 	}
 
-	return file;
+	return entry;
 }
 
-HashDatabase::File::SharedPtr HashDatabase::unserialize(leveldb::Slice const& slice, bool tree)
+HashDatabase::FileEntry::SharedPtr HashDatabase::unserialize(leveldb::Slice const& slice, bool file)
 {
-	return unserialize(slice.data(), slice.size(), tree);
+	return unserialize(slice.data(), slice.size(), file);
 }
 
 void HashDatabase::delFile(std::string const& filename)
@@ -180,17 +181,17 @@ void HashDatabase::rehash()
 		end(1, static_cast<char>(Key::Filename));
 
 	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
-		HashDatabase::File::SharedPtr file = unserialize(it->value(), false);
+		HashDatabase::FileEntry::SharedPtr entry = unserialize(it->value(), false);
 		try {
-			lastWrite = boost::filesystem::last_write_time(file->m_filename);
+			lastWrite = boost::filesystem::last_write_time(entry->m_filename);
 
-			if (lastWrite != file->m_lastWrite) {
+			if (lastWrite != entry->m_lastWrite) {
 				// Update hash
-				addFile(file->m_filename);
+				addFile(entry->m_filename);
 			}
 		} catch (boost::filesystem::filesystem_error& e) {
 			// File no longer exists, remove it from the index
-			delFile(file->m_filename);
+			delFile(entry->m_filename);
 		}
 	}
 
@@ -216,9 +217,10 @@ void HashDatabase::list()
 	delete it;
 }
 
-boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> HashDatabase::search(std::string name)
+boost::shared_ptr<std::deque<HashDatabase::FileEntry::SharedPtr>> HashDatabase::search(std::string name)
 {
-	boost::shared_ptr<std::deque<File::SharedPtr>> matches(new std::deque<HashDatabase::File::SharedPtr>());
+	boost::shared_ptr<std::deque<FileEntry::SharedPtr>> matches(
+		new std::deque<HashDatabase::FileEntry::SharedPtr>());
 	auto it = m_db->NewIterator(leveldb::ReadOptions());
 
 	boost::to_lower(name);
@@ -227,7 +229,7 @@ boost::shared_ptr<std::deque<HashDatabase::File::SharedPtr>> HashDatabase::searc
 
 	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		if (std::string::npos != boost::to_lower_copy(it->key().ToString()).find(name)) {
-			File::SharedPtr match = getFile(std::string(it->key().ToString().c_str() + 1, it->key().size() - 1));
+			FileEntry::SharedPtr match = getFile(std::string(it->key().ToString().c_str() + 1, it->key().size() - 1));
 			matches->push_back(match);
 		}
 	}
