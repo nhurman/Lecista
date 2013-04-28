@@ -58,7 +58,7 @@ public:
 	  \param filename File path
 	  \return File structure
 	*/
-	FileEntry::SharedPtr getFile(std::string const& filename);
+	FileEntry::SharedPtr find(std::string const& filename);
 
 	//! Fetch a file with the corresponding hash
 	/*!

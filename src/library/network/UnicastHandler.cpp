@@ -19,12 +19,40 @@ UnicastHandler::~UnicastHandler()
 	m_io.stop();
 }
 
+void UnicastHandler::connect(std::string const& ip, unsigned short port)
+{
+	connect(boost::asio::ip::tcp::endpoint(
+		boost::asio::ip::address::from_string(ip), port));
+}
+
+void UnicastHandler::connect(boost::asio::ip::tcp::endpoint const& endpoint)
+{
+	Peer::SharedPtr peer(new Peer(m_io, m_db, boost::bind(&UnicastHandler::cleanupPeers, this)));
+	peer->socket().async_connect(endpoint, boost::bind(&UnicastHandler::on_connect, this,
+		boost::asio::placeholders::error, peer));
+}
+
 void UnicastHandler::accept()
 {
 	Peer::SharedPtr peer(new Peer(m_io, m_db, boost::bind(&UnicastHandler::cleanupPeers, this)));
 	m_acceptor.async_accept(peer->socket(), boost::bind(
 		&UnicastHandler::on_accept,
 		this, peer, boost::asio::placeholders::error));
+}
+
+void UnicastHandler::cleanupPeers()
+{
+	std::deque<std::deque<Peer::SharedPtr>::iterator> toDelete;
+
+	for (auto it = m_peers.begin(), e = m_peers.end(); it != e; ++it) {
+		if ((*it)->state() == Peer::State::Closed) {
+			toDelete.push_back(it);
+		}
+	}
+
+	for (auto it: toDelete) {
+		m_peers.erase(it);
+	}
 }
 
 void UnicastHandler::on_accept(Peer::SharedPtr peer, boost::system::error_code const& ec)
@@ -43,19 +71,15 @@ void UnicastHandler::on_accept(Peer::SharedPtr peer, boost::system::error_code c
 	accept();
 }
 
-void UnicastHandler::cleanupPeers()
+void UnicastHandler::on_connect(boost::system::error_code const& ec, Peer::SharedPtr const& peer)
 {
-	std::deque<std::deque<Peer::SharedPtr>::iterator> toDelete;
-
-	for (auto it = m_peers.begin(), e = m_peers.end(); it != e; ++it) {
-		if ((*it)->state() == Peer::State::Closed) {
-			toDelete.push_back(it);
-		}
+	if (ec) {
+		LOG_DEBUG("Error in connect(): " << ec.value() << ": " << ec.message());
+		return;
 	}
 
-	for (auto it: toDelete) {
-		m_peers.erase(it);
-	}
+	peer->download(m_db.find("/tmp/share/random")->file()->rootHash(), 0);
+	m_peers.push_back(peer);
 }
 
 }

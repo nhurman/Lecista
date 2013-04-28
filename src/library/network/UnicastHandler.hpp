@@ -15,12 +15,17 @@ public:
 	UnicastHandler(IOHandler& io, HashDatabase& db);
 	~UnicastHandler();
 
+	void connect(std::string const& ip, unsigned short port);
+	void connect(boost::asio::ip::tcp::endpoint const& endpoint);
+
 private:
 	static unsigned short const UNICAST_PORT = 49370;
 
 	void accept();
-	void on_accept(Peer::SharedPtr peer, boost::system::error_code const& ec);
 	void cleanupPeers();
+	void on_accept(Peer::SharedPtr peer, boost::system::error_code const& ec);
+	void on_connect(boost::system::error_code const& ec, Peer::SharedPtr const& peer);
+
 
 	IOHandler& m_io;
 	HashDatabase& m_db;

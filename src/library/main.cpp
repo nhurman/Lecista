@@ -22,9 +22,11 @@ int main()
 	//explorer.addDirectory("../src");
 	explorer.addDirectory("/tmp/share");
 	//explorer.listDirectories();
+	db.rehash();
 	db.list();
 
 	UnicastHandler ucast(io, db);
+	ucast.connect("127.0.0.1", 49000);
 
 	//TODO getByHash
 

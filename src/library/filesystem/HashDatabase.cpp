@@ -43,7 +43,7 @@ void HashDatabase::addFile(std::string const& filename)
 	delete[] out;
 }
 
-HashDatabase::FileEntry::SharedPtr HashDatabase::getFile(std::string const& filename)
+HashDatabase::FileEntry::SharedPtr HashDatabase::find(std::string const& filename)
 {
 	std::string data, key = static_cast<char>(Key::Filename) + filename;
 	leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &data);
@@ -205,13 +205,17 @@ void HashDatabase::list()
 	std::string begin(1, static_cast<char>(Key::Hash)),
 		end(1, static_cast<char>(Key::Filename));
 
+	std::cout << std::hex;
+
 	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		std::cout << "[";
 		for (int i = 1; i <= Hash::SIZE; i += 4) {
-			std::cout << std::hex << htonl(*(int*)(it->key().ToString().c_str() + i));
+			std::cout << htonl(*(int*)(it->key().ToString().c_str() + i));
 		}
 		std::cout << "] " << it->value().ToString().c_str() << std::endl;
 	}
+
+	std::cout << std::dec;
 
 	assert(it->status().ok());
 	delete it;
@@ -229,7 +233,7 @@ boost::shared_ptr<std::deque<HashDatabase::FileEntry::SharedPtr>> HashDatabase::
 
 	for (it->Seek(begin), it->Next(); it->Valid() && it->key().ToString() < end; it->Next()) {
 		if (std::string::npos != boost::to_lower_copy(it->key().ToString()).find(name)) {
-			FileEntry::SharedPtr match = getFile(std::string(it->key().ToString().c_str() + 1, it->key().size() - 1));
+			FileEntry::SharedPtr match = find(std::string(it->key().ToString().c_str() + 1, it->key().size() - 1));
 			matches->push_back(match);
 		}
 	}

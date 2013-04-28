@@ -73,18 +73,14 @@ void Peer::on_read(boost::system::error_code const& ec, size_t bytes)
 		assert(sizeof(Command) == bytes);
 		Command c = *reinterpret_cast<Command*>(m_readBuffer);
 
-		if (Command::DownloadBlock == c) {
-			LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Command::DownloadBlock");
+		if (Command::Download == c) {
+			LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Command::Download");
 			m_state = State::Uploading;
 
 			// char[20] Hash
 			// uint32_t Block
 			m_parsedArgs = false;
 			readBytes(Hash::SIZE + sizeof(uint32_t));
-		}
-		else if (Command::UploadBlock == c) {
-			LOG_DEBUG(m_socket.remote_endpoint().address().to_string() << " Command::UploadBlock");
-			m_state = State::Downloading;
 		}
 		else {
 			disconnect();
@@ -104,11 +100,25 @@ void Peer::on_read(boost::system::error_code const& ec, size_t bytes)
 
 	}
 	else if (State::Downloading == m_state) {
-		readBytes();
+		on_download(bytes);
 	}
 }
 
-void Peer::sendBlock(Hash::SharedPtr fileHash, uint32_t block)
+void Peer::on_download(size_t bytes)
+{
+	assert(State::Downloading == m_state);
+
+	size_t toRead = 0;
+	if (m_block.download(m_readBuffer, bytes, toRead)) {
+		readBytes(toRead);
+	}
+	else {
+		m_state = State::Idle;
+		readBytes(sizeof(Command));
+	}
+}
+
+void Peer::sendBlock(Hash::SharedPtr const& fileHash, uint32_t block)
 {
 	assert(State::Uploading == m_state);
 
@@ -154,12 +164,38 @@ void Peer::sendBlock(Hash::SharedPtr fileHash, uint32_t block)
 			startIndex,
 			endIndex);
 
-	m_socket.async_send(boost::asio::buffer(buffer.get(), headerSize),
-		boost::bind(&Peer::on_headerSent, shared_from_this(),
+	boost::asio::async_write(m_socket, boost::asio::buffer(buffer.get(), headerSize),
+		boost::bind(&Peer::on_writeSent, shared_from_this(),
 			buffer, boost::asio::placeholders::error, callback));
 }
 
-void Peer::on_headerSent(
+void Peer::download(Hash::SharedPtr const& fileHash, uint32_t block)
+{
+	LOG_DEBUG("Downloading " << fileHash->string() << "~" << block);
+	m_state = State::Downloading;
+	m_block.rootHash(fileHash);
+
+	// Command  cmd
+	// char[20] Hash
+	// uint32_t Block
+	unsigned int const packetSize = sizeof(Command) + 20 + sizeof(uint32_t);
+	boost::shared_array<char> buffer(new char[packetSize]);
+	char *b = buffer.get();
+
+	*b = static_cast<char>(Command::Download); ++b;
+	std::memcpy(b, fileHash->data(), Hash::SIZE); b += Hash::SIZE;
+	*reinterpret_cast<uint32_t*>(b) = htonl(block);
+
+	boost::function<void()> callback =
+		boost::bind(&Peer::on_read, shared_from_this(),
+			boost::system::error_code(), 0);
+
+	boost::asio::async_write(m_socket, boost::asio::buffer(buffer.get(), packetSize),
+		boost::bind(&Peer::on_writeSent, shared_from_this(),
+			buffer, boost::asio::placeholders::error, callback));
+}
+
+void Peer::on_writeSent(
 	boost::shared_array<char> buffer,
 	boost::system::error_code const& ec,
 	boost::function<void()> callback)
@@ -190,7 +226,7 @@ void Peer::on_write(boost::shared_array<char> b, boost::system::error_code const
 
 	if (!m_fh->eof() && m_fh->tellg() < end) {
 		m_fh->read(buffer.get(), BufferSize);
-		m_socket.async_send(boost::asio::buffer(buffer.get(), m_fh->gcount()),
+		boost::asio::async_write(m_socket, boost::asio::buffer(buffer.get(), m_fh->gcount()),
 			boost::bind(&Peer::on_write, shared_from_this(), buffer,
 				boost::asio::placeholders::error,
 				start + m_fh->gcount(), end));

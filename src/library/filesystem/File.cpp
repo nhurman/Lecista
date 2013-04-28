@@ -122,6 +122,10 @@ bool File::checkBlock(
 	int parent = block;
 	Hash::SharedPtr globalHash = hash;
 
+	if (hashList.size() != m_tree.size()) {
+		return false;
+	}
+
 	for (Hash::SharedPtr const& h: hashList) {
 		hasher.reset();
 
@@ -253,7 +257,7 @@ void File::print() const
 				std::cout << "........";
 			}
 
-			std::cout << std::dec << std::setw(ceil(w / 2.)) << "";
+			std::cout << std::setw(ceil(w / 2.)) << "";
 			if (node + 1 != level.end()) {
 				if (level == m_tree.front() && m_blocks[j++]) {
 					std::cout << "*| ";

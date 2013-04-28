@@ -50,12 +50,14 @@ char* Hash::data() const
 std::string Hash::string() const
 {
 	std::ostringstream out;
+	out << std::hex;
 	for (int i = 0; i < SIZE; i += sizeof(int)) {
-		out << std::hex << std::setw(sizeof(int)*2) << std::setfill('0')
+		out << std::setw(sizeof(int)*2) << std::setfill('0')
 			<< htonl(*reinterpret_cast<int*>(m_hash + i))
 			<< std::setfill(' ');
 	}
 
+	out << std::dec;
 	return out.str();
 }
 
