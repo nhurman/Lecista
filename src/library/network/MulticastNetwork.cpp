@@ -8,8 +8,7 @@ ip::address const MulticastNetwork::MCAST_ADDR = ip::address::from_string("224.0
 unsigned short const MulticastNetwork::MCAST_PORT = 49370;
 unsigned char const MulticastNetwork::HEADER_SIZE =
 	sizeof(ip::address_v4::bytes_type) + sizeof(char);
-unsigned char const MulticastNetwork::BODY_MAXSIZE =
-	sizeof(MulticastNetwork::m_readBuffer) - MulticastNetwork::HEADER_SIZE;
+unsigned char const MulticastNetwork::BODY_MAXSIZE = 256 - MulticastNetwork::HEADER_SIZE;
 
 MulticastNetwork::MulticastNetwork(IOHandler& io, Dispatcher dispatch)
 : m_io(io), m_dispatch(dispatch)
@@ -93,7 +92,10 @@ void MulticastNetwork::send(
 		*reinterpret_cast<uint32_t*>(packet.get()) = 0;
 	}
 	else {
-		std::memcpy(packet.get(), sender->to_v4().to_bytes().begin(), 4);
+		boost::asio::ip::address_v4::bytes_type b = sender->to_v4().to_bytes();
+		for (int i = 0; i < 4; ++i) {
+			packet.get()[i] = b[i];
+		}
 	}
 
 	packet[HEADER_SIZE - 1] = size + 1;

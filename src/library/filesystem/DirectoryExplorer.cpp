@@ -42,7 +42,7 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 	try {
 		rootpath = fs::canonical(rootpath).string();
 		openList.push_back(rootpath);
-	} catch (fs::filesystem_error& e) {
+	} catch (fs::filesystem_error&) {
 		return dir;
 	}
 
@@ -95,7 +95,7 @@ Config::Directory DirectoryExplorer::addDirectory(string rootpath, bool rescan)
 						++dir.files;
 					}
 				}
-			} catch (fs::filesystem_error& e) {}
+			} catch (fs::filesystem_error&) {}
 		}
 	}
 

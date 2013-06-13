@@ -1,4 +1,9 @@
 build/
+doc/
 lecista.sublime-workspace
 lecista.sublime-project
-doc
+Lecista.sdf
+Lecista.sln
+Lecista.v11.suo
+Lecista.vcxproj.filters
+Lecista.vcxproj.user

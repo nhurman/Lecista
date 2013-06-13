@@ -74,7 +74,7 @@ private:
 	boost::asio::ip::udp::socket* m_socket;
 	boost::asio::ip::udp::endpoint m_senderEndpoint;
 	boost::asio::ip::address m_senderAddress;
-	char m_readBuffer[256];
+	char m_readBuffer[256]; // Also change MulticastNetwork.cpp if you change the size
 
 	Dispatcher m_dispatch;
 	void on_read(boost::system::error_code ec, size_t bytes);

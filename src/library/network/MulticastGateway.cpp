@@ -146,7 +146,7 @@ void MulticastGateway::forward(
 		return;
 	}
 
-	char forwardData[argsSize + 1];
+	char *forwardData = new char[argsSize + 1];
 	std::memcpy(forwardData + 1, args, argsSize);
 	forwardData[0] = static_cast<int>(command);
 
@@ -159,6 +159,8 @@ void MulticastGateway::forward(
 			argsSize + 1,
 			&sender);
 	}
+
+	delete[] forwardData;
 }
 
 }

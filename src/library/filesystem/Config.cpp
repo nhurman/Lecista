@@ -31,7 +31,7 @@ void Config::load()
 {
 	try {
 		xml_parser::read_xml(m_filename, m_ptree);
-	} catch (xml_parser::xml_parser_error& e) {}
+	} catch (xml_parser::xml_parser_error&) {}
 
 	try {
 		for (ptree::value_type &v: m_ptree.get_child("config.shares")) {
@@ -44,7 +44,7 @@ void Config::load()
 					= boost::lexical_cast<float>(v.second.get_child("<xmlattr>.size").data());
 			}
 		}
-	} catch (ptree_bad_path& e) {}
+	} catch (ptree_bad_path&) {}
 
 }
 
@@ -52,7 +52,7 @@ void Config::save()
 {
 	try {
 		m_ptree.get_child("config").erase("shares");
-	} catch (ptree_bad_path& e) {}
+	} catch (ptree_bad_path&) {}
 
 	int i = 1;
 	for (auto const& e: m_shares) {
@@ -66,7 +66,7 @@ void Config::save()
 
 	try {
 		xml_parser::write_xml(m_filename, m_ptree);
-	} catch(xml_parser::xml_parser_error& e) {}
+	} catch(xml_parser::xml_parser_error&) {}
 }
 
 }

@@ -189,7 +189,7 @@ void HashDatabase::rehash()
 				// Update hash
 				addFile(entry->m_filename);
 			}
-		} catch (boost::filesystem::filesystem_error& e) {
+		} catch (boost::filesystem::filesystem_error&) {
 			// File no longer exists, remove it from the index
 			delFile(entry->m_filename);
 		}

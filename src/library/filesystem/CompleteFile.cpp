@@ -16,7 +16,7 @@ void CompleteFile::hash(std::string const& filename)
 {
 	std::ifstream fh(filename, std::ios::binary);
 	char buffer[1000 * 1000]; // 1 MB
-	unsigned int toRead, read;
+	std::streamsize toRead, read;
 	Hasher hasher;
 
 	fh.seekg(0, fh.beg);
@@ -27,12 +27,12 @@ void CompleteFile::hash(std::string const& filename)
 		hasher.reset();
 
 		while (toRead > 0 && !fh.eof()) {
-			fh.read(buffer, std::min(toRead, (unsigned int)sizeof buffer));
+			fh.read(buffer, std::min((unsigned int)toRead, (unsigned int)sizeof buffer));
 			read = fh.gcount();
 
 			if (read > 0) {
 				toRead -= read;
-				hasher.update(buffer, read);
+				hasher.update(buffer, static_cast<unsigned long>(read));
 			}
 		}
 

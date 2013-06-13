@@ -155,7 +155,7 @@ void Peer::sendBlock(Hash::SharedPtr const& fileHash, uint32_t block)
 	uintmax_t endIndex = std::min(m_file->file()->filesize(), startIndex + File::BLOCK_SIZE);
 	assert(startIndex < m_file->file()->filesize());
 
-	*reinterpret_cast<uint32_t*>(b) = htonl(endIndex - startIndex);
+	*reinterpret_cast<uint32_t*>(b) = htonl(static_cast<uint32_t>(endIndex - startIndex));
 
 	boost::function<void()> callback =
 		boost::bind(&Peer::on_write, shared_from_this(),
@@ -226,7 +226,7 @@ void Peer::on_write(boost::shared_array<char> b, boost::system::error_code const
 
 	if (!m_fh->eof() && m_fh->tellg() < end) {
 		m_fh->read(buffer.get(), BufferSize);
-		boost::asio::async_write(m_socket, boost::asio::buffer(buffer.get(), m_fh->gcount()),
+		boost::asio::async_write(m_socket, boost::asio::buffer(buffer.get(), static_cast<size_t>(m_fh->gcount())),
 			boost::bind(&Peer::on_write, shared_from_this(), buffer,
 				boost::asio::placeholders::error,
 				start + m_fh->gcount(), end));

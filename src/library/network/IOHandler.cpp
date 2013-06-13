@@ -6,7 +6,7 @@ IOHandler::IOHandler()
 {
 	m_thread = 0;
 
-	m_randomGenerator.seed(time(0) + getpid() * 10000);
+	m_randomGenerator.seed(static_cast<unsigned int>(time(0)) + _getpid() * 10000);
 	m_randomUInt = boost::random::uniform_int_distribution<uint32_t>(
 		std::numeric_limits<uint32_t>::min(),
 		std::numeric_limits<uint32_t>::max());

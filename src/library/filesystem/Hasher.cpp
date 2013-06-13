@@ -50,7 +50,7 @@ Hash::SharedPtr Hasher::hashFile(char const* filename)
 
 	while (!fh.eof()) {
 		fh.read(buffer, sizeof buffer);
-		hasher.update(&buffer[0], fh.gcount());
+		hasher.update(&buffer[0], static_cast<unsigned long>(fh.gcount()));
 	}
 
 	return hasher.getHash();

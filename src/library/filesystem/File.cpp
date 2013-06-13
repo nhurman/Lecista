@@ -36,7 +36,7 @@ File::File(char const* data, unsigned int size)
 	}
 }
 
-File::File(std::string const& serialized) : File(serialized.c_str(), serialized.size())
+File::File(std::string const& serialized)// : File(serialized.c_str(), serialized.size())
 {
 
 }
@@ -49,7 +49,7 @@ File::~File()
 void File::initTree(Hash::SharedPtr const& rootHash)
 {
 	m_tree.clear();
-	for (int i = m_blocks.size(); i > 1 ; i = ceil(i / 2.)) {
+	for (int i = m_blocks.size(); i > 1 ; i = static_cast<int>(ceil(i / 2.))) {
 		m_tree.push_back(std::vector<Hash::SharedPtr>(i));
 	}
 
@@ -183,7 +183,7 @@ unsigned int File::serializedSize() const
 	}
 
 	return sizeof(m_filesize)
-		+ ceil(m_blocks.size() / 8.)
+		+ static_cast<int>(ceil(m_blocks.size() / 8.))
 		+ numHashes * Hash::SIZE;
 }
 
@@ -230,7 +230,7 @@ unsigned int File::packStates(char* out) const
 unsigned int File::unpackStates(char const* out)
 {
 	for (int i = 0; i < m_blocks.size(); ++i) {
-		m_blocks[i] = out[i / 8] & (1 << (i % 8));
+		m_blocks[i] = (out[i / 8] & (1 << (i % 8))) != 0;
 	}
 
 	return std::max(1, (int)ceil(m_blocks.size() / 8.));
@@ -257,7 +257,7 @@ void File::print() const
 				std::cout << "........";
 			}
 
-			std::cout << std::setw(ceil(w / 2.)) << "";
+			std::cout << std::setw(static_cast<std::streamsize>(ceil(w / 2.))) << "";
 			if (node + 1 != level.end()) {
 				if (level == m_tree.front() && m_blocks[j++]) {
 					std::cout << "*| ";
