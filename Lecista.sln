@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Lecista", "Lecista.vcxproj", "{E165538C-06B2-492E-9872-9DB7AFBCC7E3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransfersManager", "src\TransfersManager\TransfersManager.vcxproj", "{F7824B79-95CF-4898-9CBD-91967E1D3388}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E165538C-06B2-492E-9872-9DB7AFBCC7E3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E165538C-06B2-492E-9872-9DB7AFBCC7E3}.Debug|Win32.Build.0 = Debug|Win32
+		{E165538C-06B2-492E-9872-9DB7AFBCC7E3}.Release|Win32.ActiveCfg = Release|Win32
+		{E165538C-06B2-492E-9872-9DB7AFBCC7E3}.Release|Win32.Build.0 = Release|Win32
+		{F7824B79-95CF-4898-9CBD-91967E1D3388}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F7824B79-95CF-4898-9CBD-91967E1D3388}.Debug|Win32.Build.0 = Debug|Win32
+		{F7824B79-95CF-4898-9CBD-91967E1D3388}.Release|Win32.ActiveCfg = Release|Win32
+		{F7824B79-95CF-4898-9CBD-91967E1D3388}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/chrono.hpp>
 #include "compat.hpp"
@@ -11,7 +12,7 @@ namespace Lecista {
 class Transfer
 {
 public:
-	explicit Transfer(File::SharedPtr const& file, IOHandler& io);
+	Transfer(File::SharedPtr const& file, IOHandler& io);
 	Transfer(Transfer const& other) : Transfer(other.m_file, other.m_io) {}
 
 	File::SharedPtr const& file() const { return m_file; }
@@ -21,13 +22,15 @@ public:
 	void restartTimer();
 	float elapsedTime() const;
 	void resetRates() { m_downloadedBytes = 0; m_uploadedBytes = 0; restartTimer(); }
-	float uploadSpeed() const;
-	float downloadSpeed() const;
-	void maxUploadSpeed(float rate) { m_maxUploadSpeed = rate; }
-	void maxDownloadSpeed(float rate) { m_maxDownloadSpeed = rate; }
+	unsigned int uploadSpeed() const;
+	unsigned int downloadSpeed() const;
+	void maxUploadSpeed(unsigned int rate) { std::cout << " >>> WRITE = " << rate << std::endl; m_maxUploadSpeed = rate; }
+	void maxDownloadSpeed(unsigned int rate) { m_maxDownloadSpeed = rate; }
 
-	void read(size_t bytes);
-	void write(char const* data, size_t bytes, boost::function<void()> callback);
+	void read(size_t bytes, boost::function<void(size_t, char*)> callback,
+		boost::shared_ptr<boost::asio::deadline_timer> timer = boost::shared_ptr<boost::asio::deadline_timer>());
+	void write(char const* data, size_t bytes, boost::function<void()> callback,
+		boost::shared_ptr<boost::asio::deadline_timer> timer = boost::shared_ptr<boost::asio::deadline_timer>());
 
 private:
 	static float const AVERAGE_DELAY;
@@ -37,8 +40,8 @@ private:
 	IOHandler& m_io;
 	unsigned int m_downloadedBytes;
 	unsigned int m_uploadedBytes;
-	float m_maxDownloadSpeed;
-	float m_maxUploadSpeed;
+	unsigned int m_maxDownloadSpeed;
+	unsigned int m_maxUploadSpeed;
 	Clock::time_point m_bandwidthTime;
 };
 
@@ -70,10 +73,10 @@ private:
 	IOHandler& m_io;
 	std::deque<Transfer> m_transfers;
 
-	float m_maxDownloadSpeed;
-	float m_maxUploadSpeed;
-	float m_downloadSpeed;
-	float m_uploadSpeed;
+	int m_maxDownloadSpeed;
+	int m_maxUploadSpeed;
+	int m_downloadSpeed;
+	int m_uploadSpeed;
 };
 
 }

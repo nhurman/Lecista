@@ -2,17 +2,40 @@
 
 #include <cstring>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace Lecista {
 
 class IOHandler
 {
 public:
-	IOHandler() {}
+	IOHandler() : m_thread(0) {}
+	~IOHandler() { stop(); }
 	boost::asio::io_service& io() { return m_io; }
+
+	void start()
+	{
+		if (0 == m_thread) {
+			m_thread = new boost::thread(boost::bind(&boost::asio::io_service::run, &m_io));
+		}
+	}
+
+	void stop()
+	{
+		if (0 != m_thread) {
+			m_io.stop();
+			if (!m_thread->try_join_for(boost::chrono::milliseconds(500))) {
+				m_thread->interrupt();
+			}
+
+			delete m_thread;
+			m_thread = 0;
+		}
+	}
 
 private:
 	boost::asio::io_service m_io;
+	boost::thread* m_thread;
 };
 
 class Hash

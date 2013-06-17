@@ -21,53 +21,91 @@ void Transfer::restartTimer()
 float Transfer::elapsedTime() const
 {
 	Clock::duration d(Clock::now() - m_bandwidthTime);
-	return d.count() * (float)(Clock::period::num) / Clock::period::den;
+	return std::max(0.0001f, d.count() * (float)(Clock::period::num) / Clock::period::den);
 }
 
-float Transfer::uploadSpeed() const
+unsigned int Transfer::uploadSpeed() const
 {
 	float elapsed = elapsedTime();
 	if (elapsed < AVERAGE_DELAY / 3 || elapsed > AVERAGE_DELAY * 3) {
 		return 0;
 	}
 
-	return m_uploadedBytes / elapsed;
+	return static_cast<int>(m_uploadedBytes / elapsed);
 }
 
-float Transfer::downloadSpeed() const
+unsigned int Transfer::downloadSpeed() const
 {
 	float elapsed = elapsedTime();
 	if (elapsed < AVERAGE_DELAY / 3 || elapsed > AVERAGE_DELAY * 3) {
 		return 0;
 	}
 
-	return m_downloadedBytes / elapsed;
+	return static_cast<int>(m_downloadedBytes / elapsed);
 }
 
-void Transfer::read(size_t bytes)
+void Transfer::read(size_t bytes, boost::function<void(size_t, char*)> callback, boost::shared_ptr<boost::asio::deadline_timer> timer)
 {
+	char data[10] = {'b'};
+	size_t read = 10;
+	callback(read, data);
+
+	if (read >= bytes) {
+		return;
+	}
+
 	float elapsed = elapsedTime();
 	if (elapsed > AVERAGE_DELAY) {
 		resetRates();
 	}
 
-	m_downloadedBytes += bytes;
+	m_downloadedBytes += read;
 	if (m_maxDownloadSpeed > 0) {
-		float targetTime = ceil(1000 * m_downloadedBytes / m_maxDownloadSpeed);
+		float targetTime = static_cast<float>(ceil(1000 * m_downloadedBytes / m_maxDownloadSpeed));
 		float sleepTime = targetTime - elapsed;
 
 		if (sleepTime > 0) { // Going too fast
 			// Delay next call
-		}
-		else {
-			// Next call asap
+			boost::shared_ptr<boost::asio::deadline_timer> timer(new boost::asio::deadline_timer(m_io.io()));
+			timer->expires_from_now(boost::posix_time::milliseconds(static_cast<int>(sleepTime)));
+			timer->async_wait(boost::bind(&Transfer::read, this, bytes - read, callback, timer));
+			return;
 		}
 	}
+
+	// Next call asap
+	m_io.io().post(boost::bind(&Transfer::read, this, bytes - read, callback, timer));
 }
 
-void Transfer::write(char const* data, size_t bytes, boost::function<void()> callback)
+void Transfer::write(char const* data, size_t bytes, boost::function<void()> callback, boost::shared_ptr<boost::asio::deadline_timer> timer)
 {
+	size_t written = 1;
+	if (written >= bytes) {
+		callback();
+		return;
+	}
 
+	float elapsed = elapsedTime();
+	if (elapsed > AVERAGE_DELAY) {
+		resetRates();
+	}
+
+	m_uploadedBytes += written;
+	if (m_maxUploadSpeed > 0) {
+		float targetTime = static_cast<float>(ceil(1000 * m_uploadedBytes / m_maxUploadSpeed));
+		float sleepTime = targetTime - elapsed;
+
+		if (sleepTime > 0) { // Going too fast
+			// Delay next call
+			boost::shared_ptr<boost::asio::deadline_timer> timer(new boost::asio::deadline_timer(m_io.io()));
+			timer->expires_from_now(boost::posix_time::milliseconds(static_cast<int>(sleepTime)));
+			timer->async_wait(boost::bind(&Transfer::write, this, data + written, bytes - written, callback, timer));
+			return;
+		}
+	}
+
+	// Next call asap
+	m_io.io().post(boost::bind(&Transfer::write, this, data + written, bytes - written, callback, timer));
 }
 
 /*******************************************************************************************************/
@@ -87,6 +125,7 @@ bool TransfersManager::add(Transfer const& transfer)
 	}
 
 	m_transfers.push_back(transfer);
+	applyRates();
 	return true;
 }
 
@@ -133,8 +172,12 @@ void TransfersManager::maxUploadSpeed(unsigned int rate)
 
 void TransfersManager::applyRates()
 {
-	unsigned int uploadRate = m_maxDownloadSpeed / m_transfers.size();
-	unsigned int downloadRate = m_maxUploadSpeed / m_transfers.size();
+	if (m_transfers.size() == 0) {
+		return;
+	}
+
+	unsigned int uploadRate = static_cast<unsigned int>(ceil((float)m_maxUploadSpeed / m_transfers.size()));
+	unsigned int downloadRate = static_cast<unsigned int>(ceil((float)m_maxDownloadSpeed / m_transfers.size()));
 
 	for (Transfer& t: m_transfers) {
 		t.maxUploadSpeed(uploadRate);
